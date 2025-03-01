@@ -1,0 +1,491 @@
+---
+title: "Final figure"
+author: "Carolina Lobato"
+date: "2025-01-05"
+output: html_document
+---
+
+
+# Load libraries
+```{r load, include = F}
+library(phyloseq)
+library(microbiome)
+library(tidyverse)
+library(ggrepel)
+library(DAtest)
+library(png)
+```
+
+# Import data
+```{r, echo = F}
+## Import metadata file
+metadata <- read.table(
+  "/Users/jmachadofreitas/Carolina/tomato/data/phy-obj/Metadata.csv",
+  sep = ",",
+  header = T,
+  fill = T,
+  row.names = "SampleID",
+  na.strings = "")
+metadata$replicates <- row.names(metadata)
+metadata <- sample_data(metadata)
+
+## Import feature table
+asv_tab <- read.table(
+  "/Users/jmachadofreitas/Carolina/tomato/data/phy-obj/Table.txt",
+                        header = T,
+                        row.names = "OTUID")
+asv_tab <- otu_table(asv_tab, taxa_are_rows = T)
+
+## Import taxonomy file
+tax_tab <- read.table(
+  "/Users/jmachadofreitas/Carolina/tomato/data/phy-obj/Taxonomy.txt",
+  sep = "\t",
+  header = T,
+  fill = T,
+  row.names = "OTUID")
+tax_tab <- as.matrix(tax_tab)
+tax_tab <- tax_table(tax_tab)
+
+## Import reference sequences
+# rs_table <- Biostrings::readDNAStringSet(
+#   "outputs/qiime2/dna-sequences.fasta",
+#   format = "fasta",
+#   nrec = -1L,
+#   skip = 0L,
+#   seek.first.rec = F,
+#   use.names = T,
+#   with.qualities = F)
+
+## Import rooted tree
+rtree <- read_tree("/Users/jmachadofreitas/Carolina/tomato/data/tree.nwk")
+
+## Convert to phyloseq object
+ps <- merge_phyloseq(
+  metadata,
+  asv_tab,
+  tax_tab,
+  # rs_table,
+  rtree)
+summarize_phyloseq(ps)
+ps0 <- ps # 16460 taxa and 1197 samples
+# save(ps0,
+#      file = "/Users/jmachadofreitas/Carolina/tomato/data/ps0.RData")
+```
+
+# Clean
+```{r}
+load("/Users/jmachadofreitas/Carolina/tomato/data/ps0.RData")
+
+ps_clean <- subset_taxa(ps0, Kingdom == "Bacteria") # 15588 taxa and 1197 samples
+ps_clean <- subset_taxa(ps_clean, Phylum != "Cyanobacteria") # 15421 taxa and 1197 samples
+# ps_clean <- prune_samples(sample_sums(ps_clean) > 1000, ps_clean) # 15421 taxa and 1040 samples
+# ps_clean <- prune_taxa(taxa_sums(ps_clean) > 0, ps_clean) # 14417 taxa and 1040 samples (lost 13.12% of the samples and 12.41% of taxa)
+ps <- ps_clean
+
+sort(sample_sums(ps))
+summary(sample_sums(ps)) # mean reads/sample = 22791
+summarize_phyloseq(ps) # Average reads = 22791, Total reads = 27281011, Singletons = 38
+taxa_names(ps)[1:5]
+sample_data(ps)$total_reads <- sample_sums(ps)
+
+# save(ps, file = "/Users/jmachadofreitas/Carolina/tomato/data/ps.RData")
+
+K <- as.data.frame(table(tax_table(ps)[,"Kingdom"]))
+P <- as.data.frame(table(tax_table(ps)[,"Phylum"])) # 38 phyla
+C <- as.data.frame(table(tax_table(ps)[,"Class"])) # 109 classes
+O <- as.data.frame(table(tax_table(ps)[,"Order"])) # 261 orders
+Fa <- as.data.frame(table(tax_table(ps)[,"Family"])) # 476 families
+G <- as.data.frame(table(tax_table(ps)[,"Genus"])) # 1187 genera
+S <- as.data.frame(table(tax_table(ps)[,"Species"])) # 1264 species
+```
+
+## Ab-Prev prep
+```{r}
+load("/Users/jmachadofreitas/Carolina/tomato/data/ps.RData")
+
+meta <- microbiome::meta(ps) # x_bac
+asv <- otu_table(ps) # x_bac
+taxo <- rownames_to_column(as.data.frame(tax_table(ps)),
+                                        "ASV") # x_bac
+sample_names(ps)
+# presence-absence data
+asv_PA <- 1 * ((asv > 0) == 1)
+
+# occupancy calculation
+asv_prev <- rowSums(asv_PA) / ncol(asv_PA)
+
+# relative abundance
+asv_rel <- apply(vegan::decostand(asv, 
+                                  method = "total", 
+                                  MARGIN = 2), 1, mean)
+
+# combine occupancy and RA of each ASV in a table
+asv_prev_rel <- rownames_to_column(as.data.frame(cbind(asv_prev, 
+                                                       asv_rel)),
+                                   "ASV")
+
+asv_prev_rel_taxo <- merge(taxo, 
+                           asv_prev_rel, 
+                           by = "ASV")
+
+# merge with metadata
+asv_tdf <- rownames_to_column(as.data.frame(t(asv)),
+                           "replicates")
+asv_tdf_meta <- merge(meta,
+                      asv_tdf, 
+                      by = "replicates")
+
+# keep only the one feature column for collapsing table
+asv_tdf_meta <- asv_tdf_meta[-c(1, 3:29)]
+
+asv_gen <- asv_tdf_meta %>% 
+  group_by(Cultivar_summary) %>%
+  summarise_each(list(sum))
+
+# make a ASV P/A table
+asv_gen_PA <- 1 * ((asv_gen > 0) == 1)
+
+# merge prevalence, RA and taxa with the nr of obs per genotype
+asv_gen_obs <- data.frame(colSums(asv_gen_PA)) %>%
+  na.omit() %>% 
+  rownames_to_column("ASV")
+names(asv_gen_obs)[names(asv_gen_obs) == "colSums.asv_gen_PA."] <- 'Obs'
+
+asv_prev_rel_taxo_gen_obs <- merge(asv_prev_rel_taxo, 
+                                   asv_gen_obs, 
+                                   by = "ASV")
+```
+
+## Ab-Prev Plot 
+```{r}
+counts <- asv_prev_rel_taxo_gen_obs %>% dplyr::count(Kingdom = "Bacteria")
+
+p_core_flex1_all <- 
+  ggplot(asv_prev_rel_taxo_gen_obs, 
+         aes(x = asv_rel, y = asv_prev, size = Obs)) +
+  geom_point(
+    color = "darkgrey",
+    alpha = 0.5) + 
+  ggrepel::geom_text_repel(data = subset(asv_prev_rel_taxo_gen_obs, asv_prev > 0.5),
+                           max.overlaps = 20,
+                           aes(asv_rel,
+                               asv_prev,
+                               label = Genus),
+                           size = 3,
+                           show.legend = F) +
+  geom_text(data = counts,
+            aes(x = 0.00000001, y = 0.1, 
+                label = paste0("Total ASVs\n", n),  
+                fontface = "bold"), size = 4) +
+  geom_hline(yintercept = 0.9, linetype = "dotted", color = "red") +
+  geom_hline(yintercept = 0.7, linetype = "dotted", color = "red") +
+  geom_hline(yintercept = 0.5, linetype = "dotted", color = "red") +
+  geom_vline(xintercept = 0.00005, linetype = "dotted", color = "red", show.legend = T) +
+  theme_classic() +
+  theme(
+    plot.margin = margin(t = 0.5, r = 0.5, b = 0.5, l = 0.5, unit = "cm"),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    axis.line = element_blank(),
+    legend.text = element_text(size = 12),
+    legend.position = c(0.35, 0.95),
+    legend.direction = "horizontal",
+    legend.background = element_rect(fill = "transparent", color = "transparent"),
+    legend.margin = margin(0, 0, 0, 0),
+    panel.spacing = unit(0.1, "lines")) +
+  scale_x_log10(breaks = c(0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001), 
+                labels = c(10, 1, 0.1, 0.01, 0.001, 0.0001, 0.00001)) +
+  scale_y_continuous(limits = c(-0.01, 1.01),
+                     breaks = c(0, 0.5, 0.7, 0.9),
+                     labels = c(0, 50, 70, 90)) +
+  labs(x = "Relative abundance [%]", y = "Prevalence [%]", size = "nº cultivars"); p_core_flex1_all
+
+# ggsave(
+#   "/Users/jmachadofreitas/Carolina/tomato/ab-prev-all.png",     
+#   plot = p_core_flex1_all,
+#   scale = 1,
+#   width = 20,
+#   height = 20,
+#   units = c("cm"),
+#   dpi = 600)
+```
+
+# Calc Core
+```{r}
+load("/Users/jmachadofreitas/Carolina/tomato/data/ps.RData")
+
+# As comparison
+ps_rel <- microbiome::transform(ps, "compositional")
+ps.core <- core(ps_rel,
+                detection = 0.001/100, #0.1%, as opposed to 0.02/100 = 2%
+                prevalence = 0.5,
+                include.lowest = T); ps.core
+
+core90 <- subset(asv_prev_rel_taxo_gen_obs, 
+                  asv_prev*100 >= 90); core90 #5 ASVs
+
+core70 <- subset(asv_prev_rel_taxo_gen_obs, 
+                  asv_prev*100 >= 70); core70 #11 ASVs
+
+core50 <- subset(asv_prev_rel_taxo_gen_obs, 
+                  asv_prev*100 >= 50); core50 #21 ASVs
+
+# write_csv(core90, "/Users/jmachadofreitas/Carolina/tomato/data/itol/488/core90.csv")
+# write_csv(core70, "/Users/jmachadofreitas/Carolina/tomato/data/itol/488/core70.csv")
+# write_csv(core50, "/Users/jmachadofreitas/Carolina/tomato/data/itol/488/core50.csv")
+```
+
+# Filter Tree
+```{r}
+load("/Users/jmachadofreitas/Carolina/tomato/data/ps.RData")
+
+# Subset
+tree_ab <- subset(asv_prev_rel_taxo_gen_obs, 
+                  asv_rel*100 > 0.005); tree_ab #488 ASVs
+
+# write_csv(tree_ab, "/Users/jmachadofreitas/Carolina/tomato/data/tree-tax.csv")
+
+ps_tree_ab <- prune_taxa(tree_ab$ASV, ps); ps_tree_ab
+tree_export = phy_tree(ps_tree_ab);tree_export
+# ape::write.tree(tree_export, "/Users/jmachadofreitas/Carolina/tomato/data/tree_ab005.nwk")
+
+P <- as.data.frame(table(tax_table(ps_tree_ab)[,"Phylum"])); P # 14 phyla
+C <- as.data.frame(table(tax_table(ps_tree_ab)[,"Class"]));C # 24 classes
+O <- as.data.frame(table(tax_table(ps_tree_ab)[,"Order"])); O # 61 orders
+Fa <- as.data.frame(table(tax_table(ps_tree_ab)[,"Family"])); Fa # 97 families
+G <- as.data.frame(table(tax_table(ps_tree_ab)[,"Genus"])); G # 178 genera
+S <- as.data.frame(table(tax_table(ps_tree_ab)[,"Species"])); S # 199 species
+```
+
+## Import tree and anotate
+```{r}
+c_tree <- grid::rasterGrob(png::readPNG("/Users/jmachadofreitas/Carolina/tomato/data/itol/488/itol-tree488.png"), interpolate = T)
+
+# Class
+Class <- c("Acidobacteriae", "Actinobacteria", "Alphaproteobacteria", "Bacilli",
+           "Bacteroidia", "Bdellovibrionia", "Blastocatellia", "Campylobacteria",
+           "Chlamydiae", "Chloroflexia", "Clostridia", "Desulfuromonadia",
+           "Gammaproteobacteria", "Holophagae", "Latescibacterota", "Negativicutes",
+           "Parcubacteria", "Phycisphaerae", "Polyangia", "Saccharimonadia",
+           "Syntrophia", "Thermoleophilia", "uid Planctomycetota", "Verrucomicrobiae")
+
+color.class <- c("#4A7C57","#2C6E3F","#607B3B","#A4B68C",
+                 "#1E5B3D","#A2A400","#A8D8B9","#88B04B",
+                 "#3B6E5C","#4E9F6D","#4C6A5F","#2A6F8F",
+                 "#72AEE6","#A6C9D1","#3E5C9E","#BC8A5E",
+                 "#9C6B47","#F1E0C6","#7D3A2F","#4E3629",
+                 "#9E7F89","#F1B3C2","#F2E8C7","#F7F6F2")
+
+legend.class <- cowplot::get_legend(
+  ggplot(data.frame(x = factor(1:24), y = 1:24)) +
+  geom_tile(aes(x = x, y = y, fill = x)) +
+  scale_fill_manual(name = "Class", values = color.class, 
+                    labels = Class) +
+  theme_classic() +
+  theme(legend.direction = "vertical",
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12),
+        legend.key.size = unit(0.4, "cm"),
+        legend.key.spacing.x = unit(1, "lines"),
+        legend.box.margin = margin(0.1,0.1,0.1,0.1, "cm"),
+        legend.box.spacing = unit(0.5, "lines"),
+        legend.spacing = unit(0.5, "lines"),
+        legend.background = element_rect(fill = "transparent", color = "transparent")) + 
+    guides(fill = guide_legend(ncol = 1)))
+
+## Core
+df1 <- data.frame(x = factor(1:3), y = rep("Core", 3))
+Core <- c("90% prevalence", "70% prevalence", "50% prevalence")
+color.core <- rev(c("#D8B7DD","#B79FD1","#8A7DAF"))
+
+legend.core <- cowplot::get_legend(
+  ggplot(df1) +
+  geom_point(aes(x = x, y = y, color = x)) +
+  scale_color_manual(name = "Core", values = color.core, labels = Core) +
+  theme_classic() +
+  theme(legend.direction = "vertical",
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12),
+        legend.key.size = unit(0.6, "cm"),
+        legend.key.spacing.x = unit(1, "line"),
+        legend.box.margin = margin(0,0,0,0, "cm"),
+        legend.box.spacing = unit(1, "line"),
+        legend.spacing = unit(1, "line"),
+        legend.background = element_rect(fill = "transparent", color = "transparent"))); legend.core
+
+c_treel <- cowplot::plot_grid(c_tree, ncol = 2, rel_widths = c(5,1)) + 
+  theme(plot.margin = margin(0.1, -1.5, 0.1, -5, "cm")) +
+  annotation_custom(legend.class, 
+                    xmin = 0.60, xmax = 0.80,
+                    ymin = 0, ymax = 1) +
+  annotation_custom(legend.core, 
+                    xmin = 0.25, xmax = 0.25,
+                    ymin = 0.01, ymax = 0.01) # ; c_treel
+
+# save(c_treel, file = "/Users/jmachadofreitas/Carolina/tomato/data/itol/488/itol-tree488-lg.RData")
+
+# load("/Users/jmachadofreitas/Carolina/tomato/data/itol/488/itol-tree488-lg.RData") #c_treel
+
+# Add Genera
+pos.x <- c(-0.028, 0.059, 0.087, 0.175, #1
+           0.196, 0.213, 0.234, 0.254, #2
+           0.303, 0.355, 0.390, 0.490, #3
+           0.552, 0.590, 0.366, 0.354, #4
+           0.342, 0.017, -0.032, -0.060, #5
+           -0.084)
+
+pos.y <- c(0.805, 0.913, 0.945, 1.005, #1
+           1.005, 1.020, 1.025, 1.018, #2
+           1.027, 1.020, 1.010, 0.912, #3
+           0.861, 0.193, 0.037, 0.033, #4
+           0.030, 0.212, 0.285, 0.435, #5
+           0.471)
+
+angle <- c(-31, -48, -54, -67, #1
+           -73, -76, -82, -87, #2
+            86,  78,  74,  55, #3
+            45, -32, -73, -77, #4
+           -80,  42,  29,  14, #5
+             9)
+
+label <- c("Burkholderia-C-P","Lactococcus","Lactobacillus","Lactobacillus", #1
+           "Weissella","Leuconostoc","Leuconostoc","Weissella", #2
+           "Lactobacillus","Lactobacillus","Lactobacillus","Bacillus", #3
+           "Pseudomonas","Candidatus adlerbacteria","Acetobacter","Acetobacter", #4
+           "Acetobacter","Pantoea","Enterobacter","Ralstonia", #5
+           "Burkholderia-C-P") 
+
+c_treelg <- cowplot::plot_grid(c_treel, 
+                             label_size = 12,
+                             greedy = T,
+                             nrow = 1) + 
+  geom_text(aes(x = pos.x * 0.72 + 0.1625,
+                y = pos.y * 1.11 - 0.085,
+                angle = angle),
+            label = label,
+            fontface = "italic",
+            size = 3) + 
+  theme(plot.margin = margin(2, -8, 2, -2, "cm")) #; c_treelg
+
+# cowplot::save_plot(
+#   plot = c_treelg,
+#   "/Users/jmachadofreitas/Carolina/tomato/data/itol/488/itol-tree488-lg.png",
+#   base_width = 25,
+#   base_height = 20,
+#   units = "cm",
+#   bg =  "white",
+#   scale = 1,
+#   dpi = 600)
+```
+
+# Calc Diff-Ab
+```{r}
+load("/Users/jmachadofreitas/Carolina/tomato/data/ps.RData")
+
+ps_new <- subset_samples(ps, TMVres != "NA"); ps_new #insectres 
+ps_new <- prune_taxa(taxa_sums(ps_new) > 0, ps_new); ps_new
+check <- unique(ps_new@sam_data[["TMVres"]]);check # insectres
+
+runtimeDA(ps, predictor = "TMVres") # insectres
+
+test <- testDA(ps_new, 
+               predictor = "TMVres", # insectres
+               covars = c("Cultivar_summary","Country_of_Origin","Production_site_2"),
+               verbose = T); test
+
+summary(test)
+
+# EdgeR exact test - TMM normalization
+po.ere <- powerDA(ps_new, predictor = "TMVres", test = "ere") # insectres
+plot(po.ere)
+summary(po.ere)
+
+final <- DA.ere(ps_new, predictor = "TMVres", # insectres
+                covars = c("Cultivar_summary","Country_of_Origin","Production_site_2")); final
+summary(final)
+
+result <- final[final$pval <= 0.05,]
+result <- result[!is.na(result$pval),]
+write.csv(result, file = "/Users/jmachadofreitas/Carolina/tomato/data/Result_DAtest_TMV.csv") # insectres
+
+result %>% ggplot( aes(x = logFC, y = Feature)) + 
+  geom_bar(stat = "identity", fill="aquamarine4", alpha = .8, width = .8) +
+  theme_classic() +
+  theme(axis.text.y = element_text(size = 6, face = "italic"))
+```
+
+# Colors
+```{r}
+# Phyla for Kingdom = Bacteria (15421 ASVs)
+1Moss Green - "#4A7C57" # Abditibacteriota, 27
+2Forest Green - "#2C6E3F" # Acetothermia, 2
+3Fern Green - "#607B3B" # Acidobacteriota, 447
+4Olive Green - "#A2A400" # Actinobacteriota, 1722
+5Pine Green - "#1E5B3D" # Aquificota, 1
+6Sage Green - "#A4B68C"# Armatimonadota, 45
+7Mint Green - "#A8D8B9" # Bacteroidota, 1838
+8Lime Green - "#88B04B" # Bdellovibrionota, 216
+9Seaweed Green - "#3B6E5C" # Campilobacterota, 41
+10Cactus Green - "#4E9F6D" # Chloroflexi, 303
+11Teal - "#4C6A5F" # Cloacimonadota, 2
+12Earth Brown - "#7A4B37" # Dadabacteria, 3
+13Chocolate Brown - "#4E3629" # Deferribacterota, 2
+14Sienna Brown - "#8E5C42" # Deinococcota, 113
+15Clay Brown - "#9C6B47" # Dependentiae, 12
+16Chestnut Brown - "#7D3A2F" # Desulfobacterota, 51
+17Desert Sand - "#F1E0C6" # Elusimicrobiota, 16
+18Golden Brown - "#BC8A5E" # Entotheonellaeota, 4
+19Terracotta - "#E2735D" # Fibrobacterota, 1
+20Brick Red - "#9C2A2C" # Firmicutes, 4310
+21Poppy Red - "#E43F44" # Fusobacteriota, 47
+22Crimson Red - "#9B1B30" # Gemmatimonadota, 100
+23Rust Orange - "#C65D4F" # Halanaerobiaeota, 14
+24Sunset Yellow - "#F9A71B" # Latescibacterota, 10
+25Buttercup Yellow - "#F7E34B" # Methylomirabilota, 10
+26Daffodil Yellow - "#FFDD47" # Myxococcota, 235
+27Goldenrod Yellow - "#E4B02B" # Nitrospirota, 37
+28Sky Blue - "#72AEE6" # Patescibacteria, 193
+29Cobalt Blue - "#3E5C9E" # Planctomycetota, 349
+30Seafoam Blue - "#A6C9D1" # Proteobacteria, 4919
+31Ocean Blue - "#2A6F8F" # Spirochaetota, 14
+32Cloud White - "#F7F6F2" # Sumerlaeota, 2
+33Ivory - "#F2E8C7" # unidentified_Bacteria, 52 
+34Lavender - "#9B8BB3" # Synergistota, 6
+35Wildflower Purple - "#9F74C5" # Thermotogota, 2
+36Rose Pink - "#F1B3C2" # Sva0485, 1
+37Mauve - "#9E7F89" # Verrucomicrobiota, 273
+38Coral Pink - "#FF6F61" # Zixibacteria, 2
+
+# Class for ab = 0.005 (488 ASVS)
+1Moss Green - "#4A7C57" # Acidobacteriae, 2
+2Forest Green - "#2C6E3F" # Actinobacteria, 44
+3Fern Green - "#607B3B" # Alphaproteobacteria, 47
+4Olive Green - "#A4B68C" # Bacilli, 135
+5Pine Green - "#1E5B3D" # Bacteroidia, 48
+6Sage Green - "#A2A400"# Bdellovibrionia, 1
+7Mint Green - "#A8D8B9" # Blastocatellia, 1
+8Lime Green - "#88B04B" # Campylobacteria, 3
+9Seaweed Green - "#3B6E5C" # Chlamydiae, 2
+10Cactus Green - "#4E9F6D" # Chloroflexia, 1
+11Teal - "#4C6A5F" # Clostridia, 25
+12Chocolate Brown - "#2A6F8F" # Desulfuromonadia, 1
+13Clay Brown - "#72AEE6" # Gammaproteobacteria, 159
+14Chestnut Brown - "#A6C9D1" # Holophagae, 1
+15Desert Sand - "#3E5C9E" # Latescibacterota, 1
+16Golden Brown - "#BC8A5E" # Negativicutes, 2
+17Sky Blue - "#9C6B47" # Parcubacteria, 3
+18Cobalt Blue - "#F1E0C6" # Phycisphaerae, 2
+19Seafoam Blue - "#7D3A2F" # Polyangia, 2
+20Ocean Blue - "#4E3629" # Saccharimonadia, 2
+21Cloud White - "#9E7F89" # Syntrophia, 1
+22Ivory - "#F1B3C2" # Thermoleophilia, 2
+23Rose Pink - "#F2E8C7" # uid_Planctomycetota, 1
+24Mauve - "#F7F6F2" # Verrucomicrobiae, 3
+
+# Core
+1"#D8B7DD" (Pastel Lavender) # C30
+2"#B79FD1" (Misty Lavender) # C70
+3"#8A7DAF" (Dusty Lavender) # C90
+```
+
