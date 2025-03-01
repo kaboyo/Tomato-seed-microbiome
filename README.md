@@ -35,13 +35,9 @@ install.packages(c("phyloseq", "vegan", "genefilter", "psych", "DESeq2", "ggplot
 Rscript Tomato100seeds_Final.Rmd
 ```
 
-
 **Contributing**    
-
 
 **Citation**
 If you use this project in your work, please cite the original publication.
 
 For more details, view the repository contents.
-
-
