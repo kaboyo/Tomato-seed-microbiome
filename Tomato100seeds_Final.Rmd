@@ -1052,7 +1052,7 @@ adores <- adonis2(distme_ps2_2 ~ English_Name_2, data=sampleda_ps2_2, permutatio
 #Total    609  139.318 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-#Figure
+##Fig.S14A
 pcoares_ps2_2 <- get_pcoa(obj=ps2_2, distmethod="bray", method="hellinger");pcoares_ps2_2#pcoa
 pcoaplot_ps2_2 <- ggordpoint(obj=pcoares_ps2_2, biplot=F, speciesannot=F,
                               factorNames=c("English_Name_2"), ellipse=F) +
@@ -1105,6 +1105,7 @@ ggsave("gg1_jiangsu.tiff", plot = gg1_jiangsu.tiff)
 dev.off()
 ```
 
+
 #consider the region of production a a factor
 ```{r,echo=FALSE, warning=FALSE}
 load("wd/ps2.RData")
@@ -1121,7 +1122,6 @@ adores <- adonis2(distme ~ Production_site_2, data=sampleda, permutation=999);ad
 #Residual          1185  275.776 0.88585                  
 #Total             1196  311.313 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1                
-
 
 #VisuAlizing the result (#PCA_pcoa_countries of origin)
 pcaplot1 <- ggordpoint(obj=pcares, pc=c(1, 2), biplot=F, speciesannot=F,
@@ -1256,6 +1256,7 @@ pcoaplot_yield <- ggordpoint(obj=pcoares_yield, biplot=F, speciesannot=F,
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "");pcoaplot_yield
 
 ```
+
 #Berry Longitudinal Diameter
 ```{r,echo=FALSE,warning=FALSE}
 load("wd/ps2.RData")
@@ -1489,8 +1490,7 @@ pcoaplot_Fruit_taste <- ggordpoint(obj=pcoares_Fruit_taste, biplot=F, speciesann
 
 ```
 
-
-
+#Fig.3 & Fig.S15
 ```{r,echo=FALSE,warning=FALSE}
 library(patchwork)
 tiff("PCOA_Parameters.tiff", units="in", width=10, height=13, res=300)
@@ -1716,6 +1716,8 @@ ffam_Insect_resistance <- ggbartax(obj=Famtaxa, facetNames="Insect_resistance", 
   theme(legend.title = element_text(color = "black", size = 12),
         legend.text = element_text(color = "black", size = 12))+
   theme(text=element_text(family="sans"))+ coord_flip();ffam_Insect_resistance
+
+#Fig.S18
 
 tiff("Barplot_Parameters.tiff", units="in", width=15, height=11, res=300)
 Barplot_Parameters.tiff=ffam_seedweight_1000+ffam_yield+ffam_Fruit_long_diameter+ffam_Fruit_hori_diameter+ffam_Fruit_color+ffam_TMV_resistance+ffam_ovaries+ffam_Fruit_shape+ffam_Fruit_taste+plot_layout(ncol = 3);Barplot_Parameters.tiff
@@ -2134,8 +2136,7 @@ Bacteria_subsamp <- rarefy_even_depth(ps2, sample.size=500 , rngseed=5163, repla
 
 ```
 
-
-#STATISTICS FOR ALPHA DIVERSITY
+#Statistics for alpha diversity
 ##Import the rarefied dataset & compute the statistics
 #Load additional libraries
 ```{r,echo=FALSE,warning=FALSE}
@@ -2345,7 +2346,6 @@ Dunn_tomato_Richness_Fruit_long_diameter <- dunnTest(alpha_500_PD_Fruit_long_dia
 # Obtaining significance letters
 library(rcompanion)
 CLD_Dunn_tomato_Richness_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_tomato_Richness_Fruit_long_diameter$res);CLD_Dunn_tomato_Richness_Fruit_long_diameter 
-
 ```
  
  
@@ -3252,6 +3252,8 @@ library(rcompanion)
 CLD_Dunn_tomato_Evenness_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_tomato_Evenness_Fruit_long_diameter$res);CLD_Dunn_tomato_Evenness_Fruit_long_diameter 
 ```
 
+
+
 #Alpha diversity  graphics  
 ```{r,echo=FALSE,warning=FALSE}
 setwd("wd")
@@ -3381,8 +3383,9 @@ plot_effective_Simpson=ggboxplot(alpha_500_PD, x = "English_Name_2", y = "Simpso
   theme(text=element_text(size=16,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_effective_Simpson
 
-
-
+----
+#Fig.S21
+----
 tiff("pd_Simpson_eveness_Effective_alpha_diversity.tiff", units="in", width=19, height=19, res=300)
 pd_Simpson_eveness_Effective_alpha_diversity.tiff=(p2/plot_PD/plot_Simpson/plot_evenness/plot_effective_richness/plot_effective_Shannon/plot_effective_Simpson);pd_Simpson_eveness_Effective_alpha_diversity.tiff
 ggsave("pd_Simpson_eveness_Effective_alpha_diversity.tiff", plot = pd_Simpson_eveness_Effective_alpha_diversity.tiff)
@@ -3505,15 +3508,20 @@ plot_evenness_prod_site=ggboxplot(alpha_500_PD, x = "Production_site_2", y = "Ev
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_prod_site
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
-tiff("richness_shannon_pd_Simpson_eveness_priduction_site.tiff", units="in", width=13, height=12, res=300)
+----
+#Fig.S2
+----
+tiff("richness_shannon_pd_Simpson_eveness_production_site.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_priduction_site.tiff=(plot_richness_prod_site+plot_effective_richness_prod_site+plot_Shannon_prod_site+plot_effective_Shannon_prod_site+plot_PD_prod_site+plot_Simpson_prod_site+plot_effective_Simpson_prod_site+plot_evenness_prod_site+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_priduction_site.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_priduction_site.tiff", plot = richness_shannon_pd_Simpson_eveness_priduction_site.tiff)
 dev.off()
-###########################################################################################################################
+
+###############################################################################################
 
 #Dataframe
 alpha_500_PD_Fruit_color=alpha_500_PD[!is.na(alpha_500_PD$Fruit_color),];alpha_500_PD_Fruit_color
-#####################################################################################################################################################
+
+
 myco_col=c("grey35","#00AFBB", "yellow3","chartreuse4","#FB9A99");myco_col
 #FRUIT COLOR FRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLOR
 
@@ -3627,15 +3635,18 @@ plot_evenness_Fruit_color=ggboxplot(alpha_500_PD_Fruit_color, x = "Fruit_color",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_color
 
+----
+#Fig.S7
+----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_color.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_color.tiff=(plot_richness_Fruit_color+plot_effective_richness_Fruit_color+plot_Shannon_Fruit_color+plot_effective_Shannon_Fruit_color+plot_PD_Fruit_color+plot_Simpson_Fruit_color+plot_effective_Simpson_Fruit_color+plot_evenness_Fruit_color+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_color.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_color.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_color.tiff)
 dev.off()
 
-##################################################################################################################
+###############################################################################################
 alpha_500_PD_Fruit_taste=alpha_500_PD[!is.na(alpha_500_PD$Fruit_taste),];alpha_500_PD_Fruit_taste
 myco_taste=c("#FB9A99","chartreuse4");myco_taste
-##############################################################################################################################################################################################################################################
+############################
 plot_richness_Fruit_taste=ggboxplot(alpha_500_PD_Fruit_taste, x = "Fruit_taste", y = "Richness", fill= "Fruit_taste",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_taste)+
@@ -3748,15 +3759,18 @@ plot_evenness_Fruit_taste=ggboxplot(alpha_500_PD_Fruit_taste, x = "Fruit_taste",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_taste
 
+----
+#Fig.S8
+----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff=(plot_richness_Fruit_taste+plot_effective_richness_Fruit_taste+plot_Shannon_Fruit_taste+plot_effective_Shannon_Fruit_taste+plot_PD_Fruit_taste+plot_Simpson_Fruit_taste+plot_effective_Simpson_Fruit_taste+plot_evenness_Fruit_taste+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff)
 dev.off()
-##############################################################################################################################################################################################################################################
 
+###############################################################################################
 alpha_500_PD_Fruit_shape=alpha_500_PD[!is.na(alpha_500_PD$Fruit_shape),];alpha_500_PD_Fruit_shape
 myco_shp=c("darkturquoise","chartreuse4","#FB9A99");myco_shp
-##############################################################################################################################################################################################################################################
+#########################
 alpha_500_PD_Fruit_shape=alpha_500_PD[!is.na(alpha_500_PD$Fruit_shape),];alpha_500_PD_Fruit_shape
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", units="in", width=20, height=20, res=300)
 plot_richness_Fruit_shape=ggboxplot(alpha_500_PD_Fruit_shape, x = "Fruit_shape", y = "Richness", fill= "Fruit_shape",  ylab = "Richness", xlab = "")+
@@ -3870,14 +3884,19 @@ plot_evenness_Fruit_shape=ggboxplot(alpha_500_PD_Fruit_shape, x = "Fruit_shape",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_shape
 
+----
+#Fig.S6
+----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff=(plot_richness_Fruit_shape+plot_effective_richness_Fruit_shape+plot_Shannon_Fruit_shape+plot_effective_Shannon_Fruit_shape+plot_PD_Fruit_shape+plot_Simpson_Fruit_shape+plot_effective_Simpson_Fruit_shape+plot_evenness_Fruit_shape+ plot_layout(ncol= 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff)
 dev.off()
-###########################################################################################################################
+
+###############################################################################################
 alpha_500_PD_TMV_resistance=alpha_500_PD[!is.na(alpha_500_PD$TMV_resistance),];alpha_500_PD_TMV_resistance
 myco_TMV=c("#0B775E","#FB9A99","grey35");myco_TMV
-###########################################################################################################################
+#############################
+#############################
 plot_richness_TMV_resistance=ggboxplot(alpha_500_PD_TMV_resistance, x = "TMV_resistance", y = "Richness", fill= "TMV_resistance",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_TMV)+
@@ -4107,14 +4126,18 @@ plot_evenness_Insect_resistance=ggboxplot(alpha_500_PD_Insect_resistance, x = "I
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Insect_resistance
 
+----
+#Fig.S3
+----
 tiff("richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff=(plot_richness_Insect_resistance+plot_effective_richness_Insect_resistance+plot_Shannon_Insect_resistance+plot_effective_Shannon_Insect_resistance+plot_PD_Insect_resistance+plot_Simpson_Insect_resistance+plot_effective_Simpson_Insect_resistance+plot_evenness_Insect_resistance+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff", plot = richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff)
 dev.off()
-###########################################################################################################################
+
+###############################################################################################
 alpha_500_PD_seedweight_1000=alpha_500_PD[!is.na(alpha_500_PD$seedweight_1000),];alpha_500_PD_seedweight_1000
 myco_weight=c("#0B775E","#FB9A99","yellow3","grey35");myco_weight
-##############################################################################################################################################################################################################################################
+###################
 plot_richness_seedweight_1000=ggboxplot(alpha_500_PD_seedweight_1000, x = "seedweight_1000", y = "Richness", fill= "seedweight_1000",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_weight)+
@@ -4224,11 +4247,16 @@ plot_evenness_seedweight_1000=ggboxplot(alpha_500_PD_seedweight_1000, x = "seedw
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_seedweight_1000
 
+----
+#Fig.S10
+----
 tiff("richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff=(plot_richness_seedweight_1000+plot_effective_richness_seedweight_1000+plot_Shannon_seedweight_1000+plot_effective_Shannon_seedweight_1000+plot_PD_seedweight_1000+plot_Simpson_seedweight_1000+plot_effective_Simpson_seedweight_1000+plot_evenness_seedweight_1000+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff", plot = richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff)
 dev.off()
-#########################################################################################################################
+
+##########################
+##########################
 alpha_500_PD_yield=alpha_500_PD[!is.na(alpha_500_PD$yield),];alpha_500_PD_yield
 myco_yield=c("chartreuse4","yellow3","#0B775E","#00AFBB","grey35");myco_yield
 #########################################################################################################################
@@ -4342,15 +4370,18 @@ plot_evenness_yield=ggboxplot(alpha_500_PD_yield, x = "yield", y = "Evenness", f
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_yield
 
+----
+#Fig.S9
+----
 tiff("richness_shannon_pd_Simpson_eveness_yield.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_yield.tiff=(plot_richness_yield+plot_effective_richness_yield+plot_Shannon_yield+plot_effective_Shannon_yield+plot_PD_yield+plot_Simpson_yield+plot_effective_Simpson_yield+plot_evenness_yield+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_yield.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_yield.tiff", plot = richness_shannon_pd_Simpson_eveness_yield.tiff)
 dev.off()
-#########################################################################################################################
-#########################################################################################################################
-alpha_500_PD_ovaries=alpha_500_PD[!is.na(alpha_500_PD$ovaries),];alpha_500_PD_ovaries
+
+###############################################################################################alpha_500_PD_ovaries=alpha_500_PD[!is.na(alpha_500_PD$ovaries),];alpha_500_PD_ovaries
 myco_ovaries=c("#00AFBB","#FB9A99","chartreuse4");myco_ovaries
-#########################################################################################################################
+##########################
+###########################
 plot_richness_ovaries=ggboxplot(alpha_500_PD_ovaries, x = "ovaries", y = "Richness", fill= "ovaries",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_ovaries)+
@@ -4473,17 +4504,18 @@ plot_evenness_ovaries=ggboxplot(alpha_500_PD_ovaries, x = "ovaries", y = "Evenne
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_ovaries
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
+----
+#Fig.S5
+----
 tiff("richness_shannon_pd_Simpson_eveness_ovaries.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_ovaries.tiff=(plot_richness_ovaries+plot_effective_richness_ovaries+plot_Shannon_ovaries+plot_effective_Shannon_ovaries+plot_PD_ovaries+plot_Simpson_ovaries+plot_effective_Simpson_ovaries+plot_evenness_ovaries+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_ovaries.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_ovaries.tiff", plot = richness_shannon_pd_Simpson_eveness_ovaries.tiff)
 dev.off()
-##########################################################################################################################
-##########################################################################################################################
-##########################################################################################################################
-##########################################################################################################################
+###############################################################################################
 alpha_500_PD_Fruit_hori_diameter=alpha_500_PD[!is.na(alpha_500_PD$Fruit_hori_diameter),];alpha_500_PD_Fruit_hori_diameter
 myco_horiz=c("chartreuse4","#00AFBB","#FB9A99");myco_horiz
-#########################################################################################################################
+##########################
+###########################
 plot_richness_Fruit_hori_diameter=ggboxplot(alpha_500_PD_Fruit_hori_diameter, x = "Fruit_hori_diameter", y = "Richness", fill= "Fruit_hori_diameter",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_horiz)+
@@ -4606,18 +4638,19 @@ plot_evenness_Fruit_hori_diameter=ggboxplot(alpha_500_PD_Fruit_hori_diameter, x 
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_hori_diameter
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
+----
+#Fig.S11
+----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff=(plot_richness_Fruit_hori_diameter+plot_effective_richness_Fruit_hori_diameter+plot_Shannon_Fruit_hori_diameter+plot_effective_Shannon_Fruit_hori_diameter+plot_PD_Fruit_hori_diameter+plot_Simpson_Fruit_hori_diameter+plot_effective_Simpson_Fruit_hori_diameter+plot_evenness_Fruit_hori_diameter+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff)
 dev.off()
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-#########################################################################################################################
-##########################################################################################################################
+###############################################################################################
+
 alpha_500_PD_Fruit_long_diameter=alpha_500_PD[!is.na(alpha_500_PD$Fruit_long_diameter),];alpha_500_PD_Fruit_long_diameter
 myco_longdiam=c("chartreuse4","#00AFBB","#FB9A99" );myco_longdiam
-#########################################################################################################################
+##########################
+
 plot_richness_Fruit_long_diameter=ggboxplot(alpha_500_PD_Fruit_long_diameter, x = "Fruit_long_diameter", y = "Richness", fill= "Fruit_long_diameter",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_longdiam)+
@@ -4740,125 +4773,13 @@ plot_evenness_Fruit_long_diameter=ggboxplot(alpha_500_PD_Fruit_long_diameter, x 
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_long_diameter
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
+----
+#Fig.S12
+----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff=(plot_richness_Fruit_long_diameter+plot_effective_richness_Fruit_long_diameter+plot_Shannon_Fruit_long_diameter+plot_effective_Shannon_Fruit_long_diameter+plot_PD_Fruit_long_diameter+plot_Simpson_Fruit_long_diameter+plot_effective_Simpson_Fruit_long_diameter+plot_evenness_Fruit_long_diameter+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff)
 dev.off()
 
 ```
-
-#using the microeco package, we use the file convention there to compute for the assignment of microbiome functions of the seed bacterial community
-##https://chiliubio.github.io/microeco_tutorial/explainable-class.html
-#https://chiliubio.github.io/microeco_tutorial/basic-class.html#microtable-class
-```{r,echo=FALSE,warning=FALSE}
-setwd("wd/")
-load("wd/ps2.RData")
-library(microeco)
-library(magrittr)
-library(ggplot2)
-library(aplot)
-library(phyloseq)
-source("phylo-meco.txt")
-library(ggh4x)
-library(ggradar)
-library(ggnested)
-
-mt=phyloseq2meco(ps2);mt
-#phy=meco2phyloseq(mt);phy # microeco to phyloseq
-class(mt$otu_table)
-class(mt$tax_table)
-class(mt$sample_table)
-class(mt$phylo_tree)
-#convert the microeco object
-mt=microtable$new(sample_table = mt$sample_table, otu_table = mt$otu_table, tax_table = mt$tax_table, phylo_tree = mt$phylo_tree);mt
-class(mt)
-mt$sample_table
-#The trans_env & trans_func classes are placed into the section ‘Explainable class’, as environmental factors & microbial functions can be generally applied to explain microbial community structure & assembly.
-
-## Imported metadata file
-#env_data <- read.table("env_data.txt", header=TRUE, sep="\t",row.names="SampleID");env_data
-
-#mt$sample_table <- data.frame(mt$sample_table, env_data[rownames(mt$sample_table), ])
-#mt$sample_table
-#alternatively create another dataframe & append to the microeco object
-#t1 <- trans_env$new(dataset = mt, add_data = env_data[, 1:12]);t1 
-#t1$data_env
-
-
-```
-#trans_func class
-#Ecological researchers are usually interested in the the funtional profiles of microbial communities, because functional or metabolic data is powerful to explain the structure & dynamics of microbial communities. As metagenomic sequencing is complicated & expensive, using amplicon sequencing data to predict functional profiles is an alternative choice. Several software are often used for this goal, such as PICRUSt (Langille et al. 2013), Tax4Fun (Aßhauer et al. 2015) & FAPROTAX (Stilianos Louca et al. 2016; S. Louca, Parfrey, & Doebeli 2016). These tools are great to be used for the prediction of functional profiles based on the prokaryotic communities from sequencing results. In addition, it is also important to obtain the traits or functions for each taxa, not just the whole profile of communities. FAPROTAX database is a collection of the traits & functions of prokaryotes based on the known research results published in books & literatures. We match the taxonomic information of prokaryotes against this database to predict the traits of prokaryotes on biogeochemical roles. The NJC19 database (Lim et al. 2020) is also available for animal-associated prokaryotic data, such as human gut microbiota. We also implement the FUNGuild (Nguyen et al. 2016) & FungalTraits (Põlme et al. 2020) databases to predict the fungal traits. The idea identifying prokaryotic traits & functional redundancy was initially inspired by our another study (C. Liu et al. 2022).
-```{r,echo=FALSE,warning=FALSE}
-t1 <- trans_func$new(mt)
-t1$sample_table
-t1$cal_spe_func(prok_database = "FAPROTAX")
-t1$cal_spe_func_perc(abundance_weighted = TRUE)
-# it is better to clone a dataset
-tmp_mt <- clone(mt)
-# transpose res_spe_func_perc to be a data.frame like taxonomic abundance
-tmp <- as.data.frame(t(t1$res_spe_func_perc), check.names = FALSE)
-# assign the table back to taxa_abund list for further analysis
-tmp_mt$taxa_abund$func <- tmp
-# select the "func" in taxa_abund list in trans_diff
-t2 <- trans_diff$new(dataset = tmp_mt, method = "anova", group = "Insect_resistance", taxa_level = "func")
-t2$plot_diff_abund(add_sig = T) + ggplot2::ylab("Relative abundance (%)") 
-
-```
-
-#https://tomsing1.github.io/blog/posts/tidyHeatmap/
-
-```{r}
-
-setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Figures/Clean_Figures/Carolina_figures/")
-library(circlize)  # to create continuous color gradients
-library(dplyr)  # wrangling tidy tables
-library(grid)  # to define witdth / height of annotations using grid::unit()
-library(ragg)  # to generate high quality graphics
-library(RColorBrewer)  # to access predefined color palettes
-library(tibble)  # to convert data.frames to tibbles
-library(tidyHeatmap) # the main act: plotting & annotating heatmaps
-library(readr)
-library(edgeR)
-data <- read_csv("Result_DAtest_insect.csv");data
-
-#remove duplictated items
-library(dplyr)
-data <- data %>% distinct();data
-
-### Set thresholds
-padj.cutoff <- 0.05
-lfc.cutoff <- 0.58
-#The lfc.cutoff is set to 0.58; remember that we are working with log2 fold changes so this translates to an actual fold #change of 1.5 which is pretty reasonable. Let’s create vector that helps us identify the genes that meet our criteria:
-
-threshold <- data$pval.adj < padj.cutoff & abs(data$logFC) > lfc.cutoff
-
-# Volcano plot
-ggplot(data) +
-  geom_point(aes(x=logFC, y=-log10(data$pval.adj), colour=threshold)) +
-  ggtitle("Mov10 overexpression") +
-  xlab("log2 fold change") + 
-  ylab("-log10 adjusted p-value") +
-  theme(legend.position = "none",
-        plot.title = element_text(size = rel(1.5), hjust = 0.5),
-        axis.title = element_text(size = rel(1.25)))  
-```
-
-
-```{r}
-resOE_df_ordered <- data[order(data$pval), ];resOE_df_ordered
-resOE_df_ordered$genelabels <- rownames(resOE_df_ordered) %in% rownames(resOE_df_ordered[1:1000,])
-#View(resOE_df_ordered)
-
-ggplot(resOE_df_ordered) +
-  geom_point(aes(x = logFC, y = -log10(pval.adj), colour = threshold)) +
-  geom_text_repel(aes(x = logFC, y = -log10(pval.adj), label = ifelse(genelabels == T, rownames(resOE_df_ordered),""))) +
-  ggtitle("Mov10 overexpression") +
-  xlab("log2 fold change") + 
-  ylab("-log10 adjusted p-value") +
-  theme(legend.position = "none",
-        plot.title = element_text(size = rel(1.5), hjust = 0.5),
-        axis.title = element_text(size = rel(1.25))) 
-
-```
-
 
