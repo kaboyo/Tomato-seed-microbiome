@@ -1,17 +1,10 @@
+**Introduction**
+
 #Seed microbiome is crucial for plant health and productivity. It is currently unclear to what extent genotype variation can occur. Here a large-scale approach with 100 different tomato (Solanum lycopersicum L.) genotypes was implemented to explore the plasticity of the seed microbiome.
 
-**Table of Contents**
-Introduction
-Setup and Installation
-Usage
-Contributing
-License
-
-**Introduction**
-This repository contains the code and data used to study the plasticity of the tomato seed microbiome across 100 different genotypes. The primary languages used in this project are R and Shell.
 
 **Setup and Installation**
-Clone the repository
+**Clone the repository**
 
 ```
 git clone https://github.com/kaboyo/Tomato-seed-microbiome.git
