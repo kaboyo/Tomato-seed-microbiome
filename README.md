@@ -16,8 +16,13 @@ Clone the repository
 ```
 git clone https://github.com/kaboyo/Tomato-seed-microbiome.git
 ```
+**Navigate to the project directory:**
 
-Install the dependencies
+```
+cd Tomato-seed-microbiome
+```
+
+**Install the dependencies**
 
 ```
 Rscript install_dependencies.R
@@ -41,9 +46,9 @@ Rscript Tomato100seeds_Final.Rmd
 **Contributing**    
 
 
+**Citation**
+If you use this project in your work, please cite the original publication.
 
-### Citation
-
-If you use Rhea in your work, please cite the original publication:xxx
+For more details, view the repository contents.
 
 
