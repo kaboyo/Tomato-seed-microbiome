@@ -41,8 +41,9 @@ Rscript Tomato100seeds_Final.Rmd
 **Contributing**    
 
 
-**License**
-This project is licensed under the MIT License. See the LICENSE file for details.
 
+### Citation
+
+If you use Rhea in your work, please cite the original publication:xxx
 
 
