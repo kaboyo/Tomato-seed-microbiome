@@ -1,6 +1,6 @@
 **Introduction**
 
-#Seed microbiome is crucial for plant health and productivity. It is currently unclear to what extent genotype variation can occur. Here a large-scale approach with 100 different tomato (Solanum lycopersicum L.) genotypes was implemented to explore the plasticity of the seed microbiome.
+#Seed microbiome is crucial for plant health and productivity. It is currently unclear to what extent plant genotic variations can influence seed microbiome. In a large-scale study (which can be considered the largest seed microbiome dataset), that involve 100 tomato (Solanum lycopersicum L.) genotypes, we examine the plasticity of the tomato seed microbiome.
 
 
 **Setup and Installation**
