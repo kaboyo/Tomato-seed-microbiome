@@ -1,0 +1,1948 @@
+---
+title: "Final figure"
+author: "Expedito Olimi"
+date: "2025-01-05"
+output: html_document
+---
+
+
+
+---
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Random_for") #<--- CHANGE ACCORDINGLY
+
+```
+
+
+---
+#https://rpubs.com/michberr/randomforestmicrobe
+#https://readingradio.github.io/J.nigra.Rmds/RF.GMW.Jnigra.html
+#install.packages("devtools") 
+#devtools::install_github("BioHPC/MegaR") 
+#library(MegaR)
+#MegaR() 
+#Compute the prevalence at 0.025#
+#Obtained from: https://f1000research.com/articles/5-1492/v1;#One of the reasons to filter by prevalence is to avoid spending much time analyzing taxa that were only rarely seen. This also turns out to be a useful filter of noise (taxa that are actually just artifacts of the data collection process)
+# Define prevalence of each taxa; # (in how many samples did each taxa appear at least once)
+```{r,echo=FALSE,warning=FALSE}
+library(doParallel);packageVersion("doParallel")#‘1.0.17’
+library(foreach);packageVersion("foreach")#‘1.5.2’
+library(tidyverse);packageVersion("tidyverse")#‘2.0.0’
+library(ggplot2);packageVersion("ggplot2")#‘3.5.0’
+library(vegan);packageVersion("vegan")#‘2.6.4’
+library(reshape2);packageVersion("reshape2")#‘1.4.4’
+library(phyloseq);packageVersion("phyloseq")#‘1.46.0’
+library(randomForest);packageVersion("randomForest")
+library(doBy);packageVersion("doBy")#‘4.7.1.1’
+library(plotrix);packageVersion("plotrix")#‘3.8.4’
+library(ggpubr);packageVersion("ggpubr")#‘0.6.0’
+
+```
+
+
+#Training model and Random forest classifications
+#x="/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/Table_rf.txt"
+
+```{r,echo=FALSE,warning=FALSE}
+Bacteria_otu <- read.table("Table.txt", header=TRUE,row.names="OTUID");Bacteria_otu
+Bacteria_otu <- otu_table(Bacteria_otu, taxa_are_rows = TRUE);Bacteria_otu 
+
+## Imported taxonomy
+#Bacteria_tax <- read.csv("Taxonomy.csv",header=TRUE,row.names="OTUID");Bacteria_tax
+Bacteria_tax <- read.table("Taxonomy.txt", header=TRUE, sep="\t",row.names="OTUID");Bacteria_tax
+Bacteria_tax <- as.matrix(Bacteria_tax);Bacteria_tax
+Bacteria_tax <- tax_table(Bacteria_tax);Bacteria_tax
+
+## Imported metadata file
+metadata <- read.table("Metadata.txt", header=TRUE, sep="\t",row.names="SampleID");metadata
+#metadata <- read.csv("Metadata.csv",header=TRUE,row.names="SampleID");metadata
+
+#rownames(metadata) <- metadata[,1]
+metadata <- sample_data(metadata);metadata
+#tree
+#tree <- read.tree(file = "tree.nwk");tree
+#tree <- phy_tree(tree)
+
+all(rownames(metadata) %in% colnames(Bacteria_otu))
+#Convert to phyloseq object
+Bacteria <- merge_phyloseq(Bacteria_otu,Bacteria_tax, metadata);Bacteria#[ 16460 taxa and 1197 samples ]
+Bacteria = subset_taxa(Bacteria, Kingdom=="Bacteria");Bacteria# [ 6448 taxa and 84 samples ]
+Bacteria = subset_taxa(Bacteria, Phylum!="CyanoBacteria");Bacteria#  [ 15588 taxa and 1197 samples ]
+Bacteria = subset_taxa(Bacteria, Order!="Chloroplast");Bacteria#  [ 15588 taxa and 1197 samples ]
+Bacteria = subset_taxa(Bacteria, Family!="Mitochondria");Bacteria# [ 15588 taxa and 1197 samples ]
+Bacteria <- prune_taxa(taxa_sums(Bacteria)>0, Bacteria);Bacteria# [ 15588 taxa and 1197 samples ]
+#OTU_table_Bacteria = as(otu_table(Bacteria), "matrix")
+#########################################################################################################
+#Summarize 
+microbiome::summarize_phyloseq(Bacteria)
+#Number of singletons = 68"
+#Sparsity = 0.995179763625127"
+#Average number of reads = 22794.9197994987"
+#Total number of reads = 27285519"
+#Max. number of reads = 225892"
+#Min. number of reads = 68"
+sums_Bacteria <- sample_sums(Bacteria);sums_Bacteria
+sums_Bacteria <- data.frame(sums_Bacteria);sums_Bacteria
+sums_Bacteria <- as.matrix(sums_Bacteria);sums_Bacteria
+colSums(sums_Bacteria) #  27281011      
+max(sums_Bacteria) #225892
+min(sums_Bacteria) # 68
+sums_Bacteria
+#https://david-barnett.github.io/microViz/articles/web-only/tax-fixing.html #fixing the table
+#https://rpubs.com/bioguo/680490 (Random forest classifications)
+library(devtools);packageVersion("devtools")# ‘2.4.5’# Load the devtools package
+#install_github("guokai8/microbial") # Install the package (Microbial package)
+library(microbial);packageVersion("microbial")#‘0.0.22’####
+ps=Bacteria
+save(ps, file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+```
+
+
+#Consider the seed cultivars
+
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+prunescale.ps = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps <- taxa_sums(ps)/nsamples(ps) # average number of reads for each otu
+sites.prune.ps <- prune_taxa(tax.mean.ps > prunescale.ps, ps)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps<- t(otu_table(sites.prune.ps));predictors.ps
+dim(predictors.ps)
+# 1197 1655
+
+# Make one column for our outcome/response variable 
+response.ps <- as.factor(sample_data(sites.prune.ps)$English_Name_2);response.ps
+# Combine them into 1 data frame
+rf.data.ps <- data.frame(response.ps, predictors.ps);rf.data.ps
+str(rf.data.ps)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps.classify <- randomForest(response.ps ~., data = rf.data.ps, ntree = 500, proximity=T, mtry=200)
+  print(ps.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps.classify <- randomForest(response.ps ~., data = rf.data.ps, ntree = 500, proximity=T, mtry=200)
+  print(ps.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps.classify$err.rate[500,1])
+}
+
+#Display and visualize results
+# Look at the results
+mean(boot.oob)#0.1007352
+sd(boot.oob)#0.003860804
+range(boot.oob)# 0.09106099 0.11027569
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 50 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps)[r.s, ])
+write.csv(t.table, "RF.ps.t.table.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps, data = rf.data.ps[, c('response.ps', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps
+rf.data.ps$response.ps
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps)[rownames(hm),'English_Name_2']$English_Name_2)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+plot1 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=11), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=11),
+                                            axis.title.y = element_text(face="bold", colour="black", size=11),
+                                            axis.text.x = element_text(face="bold", colour="black", size=11),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=11))+ labs(tag = "",size=11);plot1
+g1 <- ggplotGrob(plot1);g1
+
+#Creat the bargraph
+plot2 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "steelblue4") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=11),
+                       axis.title.y = element_text(face="bold", colour="black", size=11),
+                       axis.text.x = element_text(face="bold", colour="black", size=11),
+                       axis.text.y  = element_text(face="bold", colour="black", size=11))+ labs(tag = "",size=11);plot2
+g2 <- ggplotGrob(plot2);g2
+library(ggpubr)
+library(patchwork)
+#Put them together
+RF1=ggarrange(g1, g2, align='h', nrow=1, ncol=2, widths=c(4,2));RF1
+tiff("RF1.tiff", units="in", width=19, height=3, res=300)
+RF1.tiff=RF1+plot_layout(nrow=1);RF1.tiff
+ggsave("RF1.tiff", plot = RF1.tiff)
+dev.off()
+
+```
+
+#Consider the seed production site
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+prunescale.ps = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps <- taxa_sums(ps)/nsamples(ps) # average number of reads for each otu
+sites.prune.ps <- prune_taxa(tax.mean.ps > prunescale.ps, ps)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps<- t(otu_table(sites.prune.ps));predictors.ps
+dim(predictors.ps)
+# 1197 1655
+
+# Make one column for our outcome/response variable 
+response.ps <- as.factor(sample_data(sites.prune.ps)$Production_site_2);response.ps
+# Combine them into 1 data frame
+rf.data.ps <- data.frame(response.ps, predictors.ps);rf.data.ps
+str(rf.data.ps)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps.classify <- randomForest(response.ps ~., data = rf.data.ps, ntree = 500, proximity=T, mtry=200)
+  print(ps.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps.classify <- randomForest(response.ps ~., data = rf.data.ps, ntree = 500, proximity=T, mtry=200)
+  print(ps.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps.classify$err.rate[500,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1176859
+sd(boot.oob)#0.003960805
+range(boot.oob)# 0.1086048 0.1286550
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_pruductionsite.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps)[r.s, ])
+write.csv(t.table, "RF.ps.t.table_pruductionsite.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps, data = rf.data.ps[, c('response.ps', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps
+rf.data.ps$response.ps
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps)[rownames(hm),'Production_site_2']$Production_site_2)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+write_csv(hm.melt,"hm.melt.csv")
+hm.melt=read.csv(file="hm.melt.csv",header=T,check.names=FALSE,sep=",");hm.melt
+#class(Hm.melt)
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+#hm.melt$Taxon =factor(hm.melt$Taxon, levels(hm.melt$Taxon)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+
+# Creat the heatmap with the taxon names and OTUs
+plot3 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot3
+g3 <- ggplotGrob(plot3);g3
+
+# Creat the bargraph
+plot4 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#F39B7FB2") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot4
+g4 <- ggplotGrob(plot4);g4
+library(ggpubr)
+#Put them together
+RF2=ggarrange(g3, g4, align='h', nrow=1, ncol=2, widths=c(4,2));RF2
+tiff("RF2.tiff", units="in", width=19, height=3, res=300)
+RF2.tiff=RF2+plot_layout(nrow=1);RF2.tiff
+ggsave("RF2.tiff", plot = RF2.tiff)
+dev.off()
+
+```
+
+#consider fruit color
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+#Subset the phyloseq object for the attributes: Fruit_shape, Fruit_taste, and Fruit_color
+##########################################################################################################################
+ps_Fruit_color <- subset_samples(ps, !is.na(Fruit_color));ps_Fruit_color
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+prunescale.ps_Fruit_color = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Fruit_color <- taxa_sums(ps_Fruit_color)/nsamples(ps_Fruit_color) # average number of reads for each otu
+sites.prune.ps_Fruit_color <- prune_taxa(tax.mean.ps_Fruit_color > prunescale.ps_Fruit_color, ps_Fruit_color)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Fruit_color<- t(otu_table(sites.prune.ps_Fruit_color));predictors.ps_Fruit_color
+dim(predictors.ps_Fruit_color)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Fruit_color <- as.factor(sample_data(sites.prune.ps_Fruit_color)$Fruit_color);response.ps_Fruit_color
+# Combine them into 1 data frame
+rf.data.ps_Fruit_color <- data.frame(response.ps_Fruit_color, predictors.ps_Fruit_color);rf.data.ps_Fruit_color
+str(rf.data.ps_Fruit_color)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_color.classify <- randomForest(response.ps_Fruit_color ~., data = rf.data.ps_Fruit_color, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_color.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_color.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_color.classify <- randomForest(response.ps_Fruit_color ~., data = rf.data.ps_Fruit_color, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_color.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_color.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Fruit_color.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.2003207
+sd(boot.oob)#0.004362374
+range(boot.oob)#   0.1907173 0.2126582
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Fruit_color.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Fruit_color)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Fruit_color)[r.s, ])
+write.csv(t.table, "RF.ps_Fruit_color.t.table_Fruit_color.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Fruit_color, data = rf.data.ps_Fruit_color[, c('response.ps_Fruit_color', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Fruit_color
+rf.data.ps_Fruit_color$response.ps_Fruit_color
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Fruit_color[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Fruit_color)[rownames(hm),'Fruit_color']$Fruit_color)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+plot5 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot5
+g5 <- ggplotGrob(plot5);g5
+
+# Creat the bargraph
+plot6 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "steelblue4") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot6
+g6 <- ggplotGrob(plot6);g6
+library(ggpubr)
+# Put them togethers
+RF3=ggarrange(g5, g6, align='h', nrow=1, ncol=2, widths=c(4,2));RF3
+tiff("RF3.tiff", units="in", width=12, height=2, res=300)
+RF3.tiff=RF3+plot_layout(nrow=1);RF3.tiff
+ggsave("RF3.tiff", plot = RF3.tiff)
+dev.off()
+```
+
+#ps_Fruit_shape
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_Fruit_shape <- subset_samples(ps, !is.na(Fruit_shape));ps_Fruit_shape
+
+prunescale.ps_Fruit_shape = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Fruit_shape <- taxa_sums(ps_Fruit_shape)/nsamples(ps_Fruit_shape) # average number of reads for each otu
+sites.prune.ps_Fruit_shape <- prune_taxa(tax.mean.ps_Fruit_shape > prunescale.ps_Fruit_shape, ps_Fruit_shape)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Fruit_shape<- t(otu_table(sites.prune.ps_Fruit_shape));predictors.ps_Fruit_shape
+dim(predictors.ps_Fruit_shape)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Fruit_shape <- as.factor(sample_data(sites.prune.ps_Fruit_shape)$Fruit_shape);response.ps_Fruit_shape
+# Combine them into 1 data frame
+rf.data.ps_Fruit_shape <- data.frame(response.ps_Fruit_shape, predictors.ps_Fruit_shape);rf.data.ps_Fruit_shape
+str(rf.data.ps_Fruit_shape)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_shape.classify <- randomForest(response.ps_Fruit_shape ~., data = rf.data.ps_Fruit_shape, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_shape.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_shape.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_shape.classify <- randomForest(response.ps_Fruit_shape ~., data = rf.data.ps_Fruit_shape, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_shape.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_shape.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Fruit_shape.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Fruit_shape.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Fruit_shape)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Fruit_shape)[r.s, ])
+write.csv(t.table, "RF.ps_Fruit_shape.t.table_Fruit_shape.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Fruit_shape, data = rf.data.ps_Fruit_shape[, c('response.ps_Fruit_shape', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Fruit_shape
+rf.data.ps_Fruit_shape$response.ps_Fruit_shape
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Fruit_shape[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Fruit_shape)[rownames(hm),'Fruit_shape']$Fruit_shape)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot7 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot7
+g7 <- ggplotGrob(plot7);g7
+
+# Creat the bargraph
+plot8 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "darkturquoise") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot8
+g8 <- ggplotGrob(plot8);g8
+library(ggpubr)
+# Put them togethers
+RF4=ggarrange(g7, g8, align='h', nrow=1, ncol=2, widths=c(4,2));RF4
+tiff("RF4.tiff", units="in", width=10, height=2, res=300)
+RF4.tiff=RF4+plot_layout(nrow=1);RF4.tiff
+ggsave("RF4.tiff", plot = RF4.tiff)
+dev.off()
+
+```
+
+
+#TMV_resistance 
+
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_TMV_resistance <- subset_samples(ps, !is.na(TMV_resistance));ps_TMV_resistance
+
+prunescale.ps_TMV_resistance = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_TMV_resistance <- taxa_sums(ps_TMV_resistance)/nsamples(ps_TMV_resistance) # average number of reads for each otu
+sites.prune.ps_TMV_resistance <- prune_taxa(tax.mean.ps_TMV_resistance > prunescale.ps_TMV_resistance, ps_TMV_resistance)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_TMV_resistance<- t(otu_table(sites.prune.ps_TMV_resistance));predictors.ps_TMV_resistance
+dim(predictors.ps_TMV_resistance)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_TMV_resistance <- as.factor(sample_data(sites.prune.ps_TMV_resistance)$TMV_resistance);response.ps_TMV_resistance
+# Combine them into 1 data frame
+rf.data.ps_TMV_resistance <- data.frame(response.ps_TMV_resistance, predictors.ps_TMV_resistance);rf.data.ps_TMV_resistance
+str(rf.data.ps_TMV_resistance)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_TMV_resistance.classify <- randomForest(response.ps_TMV_resistance ~., data = rf.data.ps_TMV_resistance, ntree = 100, proximity=T, mtry=200)
+  print(ps_TMV_resistance.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_TMV_resistance.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_TMV_resistance.classify <- randomForest(response.ps_TMV_resistance ~., data = rf.data.ps_TMV_resistance, ntree = 100, proximity=T, mtry=200)
+  print(ps_TMV_resistance.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_TMV_resistance.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_TMV_resistance.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_TMV_resistance.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_TMV_resistance)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_TMV_resistance)[r.s, ])
+write.csv(t.table, "RF.ps_TMV_resistance.t.table_TMV_resistance.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_TMV_resistance, data = rf.data.ps_TMV_resistance[, c('response.ps_TMV_resistance', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_TMV_resistance
+rf.data.ps_TMV_resistance$response.ps_TMV_resistance
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_TMV_resistance[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_TMV_resistance)[rownames(hm),'TMV_resistance']$TMV_resistance)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot9 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot9
+g9 <- ggplotGrob(plot9);g9
+
+# Creat the bargraph
+plot10 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#556670") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot10
+g10 <- ggplotGrob(plot10);g10
+library(ggpubr)
+# Put them togethers
+RF5=ggarrange(g9, g10, align='h', nrow=1, ncol=2, widths=c(4,2));RF5
+tiff("RF5.tiff", units="in", width=12, height=2.5, res=300)
+RF5.tiff=RF5+plot_layout(nrow=1);RF5.tiff
+ggsave("RF5.tiff", plot = RF5.tiff)
+dev.off()
+```
+
+
+#Insect_resistance
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+#consider fruit shape ps_Fruit_taste
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_Insect_resistance <- subset_samples(ps, !is.na(Insect_resistance));ps_Insect_resistance
+
+prunescale.ps_Insect_resistance = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Insect_resistance <- taxa_sums(ps_Insect_resistance)/nsamples(ps_Insect_resistance) # average number of reads for each otu
+sites.prune.ps_Insect_resistance <- prune_taxa(tax.mean.ps_Insect_resistance > prunescale.ps_Insect_resistance, ps_Insect_resistance)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Insect_resistance<- t(otu_table(sites.prune.ps_Insect_resistance));predictors.ps_Insect_resistance
+dim(predictors.ps_Insect_resistance)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Insect_resistance <- as.factor(sample_data(sites.prune.ps_Insect_resistance)$Insect_resistance);response.ps_Insect_resistance
+# Combine them into 1 data frame
+rf.data.ps_Insect_resistance <- data.frame(response.ps_Insect_resistance, predictors.ps_Insect_resistance);rf.data.ps_Insect_resistance
+str(rf.data.ps_Insect_resistance)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(3)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Insect_resistance.classify <- randomForest(response.ps_Insect_resistance ~., data = rf.data.ps_Insect_resistance, ntree = 100, proximity=T, mtry=200)
+  print(ps_Insect_resistance.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Insect_resistance.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Insect_resistance.classify <- randomForest(response.ps_Insect_resistance ~., data = rf.data.ps_Insect_resistance, ntree = 100, proximity=T, mtry=200)
+  print(ps_Insect_resistance.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Insect_resistance.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Insect_resistance.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Insect_resistance.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Insect_resistance)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Insect_resistance)[r.s, ])
+write.csv(t.table, "RF.ps_Insect_resistance.t.table_Insect_resistance.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Insect_resistance, data = rf.data.ps_Insect_resistance[, c('response.ps_Insect_resistance', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Insect_resistance
+rf.data.ps_Insect_resistance$response.ps_Insect_resistance
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Insect_resistance[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Insect_resistance)[rownames(hm),'Insect_resistance']$Insect_resistance)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot11 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot11
+g11 <- ggplotGrob(plot11);g11
+
+# Creat the bargraph
+plot12 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#807182") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot12
+g12 <- ggplotGrob(plot12);g12
+library(ggpubr)
+# Put them togethers
+RF6=ggarrange(g11, g12, align='h', nrow=1, ncol=2, widths=c(4,2));RF6
+tiff("RF6.tiff", units="in", width=11, height=3.5, res=300)
+RF6.tiff=RF6+plot_layout(nrow=1);RF6.tiff
+ggsave("RF6.tiff", plot = RF6.tiff)
+dev.off()
+```
+
+#classify by yeild range yield
+```{r,echo=FALSE,warning=FALSE}
+
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+
+#consider fruit shape ps_Fruit_taste
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_yield <- subset_samples(ps, !is.na(yield));ps_yield
+
+prunescale.ps_yield = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_yield <- taxa_sums(ps_yield)/nsamples(ps_yield) # average number of reads for each otu
+sites.prune.ps_yield <- prune_taxa(tax.mean.ps_yield > prunescale.ps_yield, ps_yield)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_yield<- t(otu_table(sites.prune.ps_yield));predictors.ps_yield
+dim(predictors.ps_yield)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_yield <- as.factor(sample_data(sites.prune.ps_yield)$yield);response.ps_yield
+# Combine them into 1 data frame
+rf.data.ps_yield <- data.frame(response.ps_yield, predictors.ps_yield);rf.data.ps_yield
+str(rf.data.ps_yield)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_yield.classify <- randomForest(response.ps_yield ~., data = rf.data.ps_yield, ntree = 100, proximity=T, mtry=200)
+  print(ps_yield.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_yield.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_yield.classify <- randomForest(response.ps_yield ~., data = rf.data.ps_yield, ntree = 100, proximity=T, mtry=200)
+  print(ps_yield.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_yield.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_yield.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_yield.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_yield)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_yield)[r.s, ])
+write.csv(t.table, "RF.ps_yield.t.table_yield.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_yield, data = rf.data.ps_yield[, c('response.ps_yield', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_yield
+rf.data.ps_yield$response.ps_yield
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_yield[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_yield)[rownames(hm),'yield']$yield)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot13 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot13
+g13 <- ggplotGrob(plot13);g13
+
+# Creat the bargraph
+plot12 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "bisque4") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot12
+g12 <- ggplotGrob(plot12);g12
+library(ggpubr)
+# Put them togethers
+RF7=ggarrange(g13, g12, align='h', nrow=1, ncol=2, widths=c(4,2));RF7
+tiff("RF7.tiff", units="in", width=12, height=2.5, res=300)
+RF7.tiff=RF7+plot_layout(nrow=1);RF7.tiff
+ggsave("RF7.tiff", plot = RF7.tiff)
+dev.off()
+```
+
+#Weight of 1000seeds(g) predictors 
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_seedweight_1000 <- subset_samples(ps, !is.na(seedweight_1000));ps_seedweight_1000
+
+prunescale.ps_seedweight_1000 = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_seedweight_1000 <- taxa_sums(ps_seedweight_1000)/nsamples(ps_seedweight_1000) # average number of reads for each otu
+sites.prune.ps_seedweight_1000 <- prune_taxa(tax.mean.ps_seedweight_1000 > prunescale.ps_seedweight_1000, ps_seedweight_1000)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_seedweight_1000<- t(otu_table(sites.prune.ps_seedweight_1000));predictors.ps_seedweight_1000
+dim(predictors.ps_seedweight_1000)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_seedweight_1000 <- as.factor(sample_data(sites.prune.ps_seedweight_1000)$seedweight_1000);response.ps_seedweight_1000
+# Combine them into 1 data frame
+rf.data.ps_seedweight_1000 <- data.frame(response.ps_seedweight_1000, predictors.ps_seedweight_1000);rf.data.ps_seedweight_1000
+str(rf.data.ps_seedweight_1000)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_seedweight_1000.classify <- randomForest(response.ps_seedweight_1000 ~., data = rf.data.ps_seedweight_1000, ntree = 100, proximity=T, mtry=200)
+  print(ps_seedweight_1000.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_seedweight_1000.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_seedweight_1000.classify <- randomForest(response.ps_seedweight_1000 ~., data = rf.data.ps_seedweight_1000, ntree = 100, proximity=T, mtry=200)
+  print(ps_seedweight_1000.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_seedweight_1000.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_seedweight_1000.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_seedweight_1000.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_seedweight_1000)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_seedweight_1000)[r.s, ])
+write.csv(t.table, "RF.ps_seedweight_1000.t.table_seedweight_1000.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_seedweight_1000, data = rf.data.ps_seedweight_1000[, c('response.ps_seedweight_1000', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_seedweight_1000
+rf.data.ps_seedweight_1000$response.ps_seedweight_1000
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_seedweight_1000[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_seedweight_1000)[rownames(hm),'seedweight_1000']$seedweight_1000)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot15 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot15
+g15 <- ggplotGrob(plot15);g15
+
+# Creat the bargraph
+plot16 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#446455") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot16
+g16 <- ggplotGrob(plot16);g16
+library(ggpubr)
+# Put them togethers
+RF8=ggarrange(g15, g16, align='h', nrow=1, ncol=2, widths=c(4,2));RF8
+tiff("RF8.tiff", units="in", width=10, height=2, res=300)
+RF8.tiff=RF8+plot_layout(nrow=1);RF8.tiff
+ggsave("RF8.tiff", plot = RF8.tiff)
+dev.off()
+
+```
+
+
+#No. of Ovaries
+```{r,echo=FALSE,warning=FALSE}
+
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_ovaries <- subset_samples(ps, !is.na(ovaries));ps_ovaries
+
+prunescale.ps_ovaries = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_ovaries <- taxa_sums(ps_ovaries)/nsamples(ps_ovaries) # average number of reads for each otu
+sites.prune.ps_ovaries <- prune_taxa(tax.mean.ps_ovaries > prunescale.ps_ovaries, ps_ovaries)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_ovaries<- t(otu_table(sites.prune.ps_ovaries));predictors.ps_ovaries
+dim(predictors.ps_ovaries)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_ovaries <- as.factor(sample_data(sites.prune.ps_ovaries)$ovaries);response.ps_ovaries
+# Combine them into 1 data frame
+rf.data.ps_ovaries <- data.frame(response.ps_ovaries, predictors.ps_ovaries);rf.data.ps_ovaries
+str(rf.data.ps_ovaries)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_ovaries.classify <- randomForest(response.ps_ovaries ~., data = rf.data.ps_ovaries, ntree = 100, proximity=T, mtry=200)
+  print(ps_ovaries.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_ovaries.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_ovaries.classify <- randomForest(response.ps_ovaries ~., data = rf.data.ps_ovaries, ntree = 100, proximity=T, mtry=200)
+  print(ps_ovaries.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_ovaries.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_ovaries.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_ovaries.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_ovaries)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_ovaries)[r.s, ])
+write.csv(t.table, "RF.ps_ovaries.t.table_ovaries.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_ovaries, data = rf.data.ps_ovaries[, c('response.ps_ovaries', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_ovaries
+rf.data.ps_ovaries$response.ps_ovaries
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_ovaries[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_ovaries)[rownames(hm),'ovaries']$ovaries)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot17 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot17
+g17 <- ggplotGrob(plot17);g17
+
+# Creat the bargraph
+plot18 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#F4B5BD") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot18
+g18 <- ggplotGrob(plot18);g18
+library(ggpubr)
+# Put them togethers
+RF9=ggarrange(g17, g18, align='h', nrow=1, ncol=2, widths=c(4,2));RF9
+tiff("RF9.tiff", units="in", width=10, height=2, res=300)
+RF9.tiff=RF9+plot_layout(nrow=1);RF9.tiff
+ggsave("RF9.tiff", plot = RF9.tiff)
+dev.off()
+
+```
+
+#Fruit_long_diameter
+```{r,echo=FALSE,warning=FALSE}
+
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_Fruit_long_diameter <- subset_samples(ps, !is.na(Fruit_long_diameter));ps_Fruit_long_diameter
+
+prunescale.ps_Fruit_long_diameter = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Fruit_long_diameter <- taxa_sums(ps_Fruit_long_diameter)/nsamples(ps_Fruit_long_diameter) # average number of reads for each otu
+sites.prune.ps_Fruit_long_diameter <- prune_taxa(tax.mean.ps_Fruit_long_diameter > prunescale.ps_Fruit_long_diameter, ps_Fruit_long_diameter)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Fruit_long_diameter<- t(otu_table(sites.prune.ps_Fruit_long_diameter));predictors.ps_Fruit_long_diameter
+dim(predictors.ps_Fruit_long_diameter)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Fruit_long_diameter <- as.factor(sample_data(sites.prune.ps_Fruit_long_diameter)$Fruit_long_diameter);response.ps_Fruit_long_diameter
+# Combine them into 1 data frame
+rf.data.ps_Fruit_long_diameter <- data.frame(response.ps_Fruit_long_diameter, predictors.ps_Fruit_long_diameter);rf.data.ps_Fruit_long_diameter
+str(rf.data.ps_Fruit_long_diameter)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_long_diameter.classify <- randomForest(response.ps_Fruit_long_diameter ~., data = rf.data.ps_Fruit_long_diameter, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_long_diameter.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_long_diameter.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_long_diameter.classify <- randomForest(response.ps_Fruit_long_diameter ~., data = rf.data.ps_Fruit_long_diameter, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_long_diameter.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_long_diameter.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Fruit_long_diameter.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Fruit_long_diameter.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Fruit_long_diameter)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Fruit_long_diameter)[r.s, ])
+write.csv(t.table, "RF.ps_Fruit_long_diameter.t.table_Fruit_long_diameter.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Fruit_long_diameter, data = rf.data.ps_Fruit_long_diameter[, c('response.ps_Fruit_long_diameter', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Fruit_long_diameter
+rf.data.ps_Fruit_long_diameter$response.ps_Fruit_long_diameter
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Fruit_long_diameter[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Fruit_long_diameter)[rownames(hm),'Fruit_long_diameter']$Fruit_long_diameter)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot19 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot19
+g19 <- ggplotGrob(plot19);g19
+
+# Creat the bargraph
+plot20 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "#B58900") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot20
+g10 <- ggplotGrob(plot20);g10
+library(ggpubr)
+# Put them togethers
+RF10=ggarrange(g19, g10, align='h', nrow=1, ncol=2, widths=c(4,2));RF10
+tiff("RF10.tiff", units="in", width=10, height=2, res=300)
+RF10.tiff=RF10+plot_layout(nrow=1);RF10.tiff
+ggsave("RF10.tiff", plot = RF10.tiff)
+dev.off()
+
+```
+
+#Fruit_hori_diameter
+```{r,echo=FALSE,warning=FALSE}
+
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_Fruit_hori_diameter <- subset_samples(ps, !is.na(Fruit_hori_diameter));ps_Fruit_hori_diameter
+
+prunescale.ps_Fruit_hori_diameter = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Fruit_hori_diameter <- taxa_sums(ps_Fruit_hori_diameter)/nsamples(ps_Fruit_hori_diameter) # average number of reads for each otu
+sites.prune.ps_Fruit_hori_diameter <- prune_taxa(tax.mean.ps_Fruit_hori_diameter > prunescale.ps_Fruit_hori_diameter, ps_Fruit_hori_diameter)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Fruit_hori_diameter<- t(otu_table(sites.prune.ps_Fruit_hori_diameter));predictors.ps_Fruit_hori_diameter
+dim(predictors.ps_Fruit_hori_diameter)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Fruit_hori_diameter <- as.factor(sample_data(sites.prune.ps_Fruit_hori_diameter)$Fruit_hori_diameter);response.ps_Fruit_hori_diameter
+# Combine them into 1 data frame
+rf.data.ps_Fruit_hori_diameter <- data.frame(response.ps_Fruit_hori_diameter, predictors.ps_Fruit_hori_diameter);rf.data.ps_Fruit_hori_diameter
+str(rf.data.ps_Fruit_hori_diameter)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_hori_diameter.classify <- randomForest(response.ps_Fruit_hori_diameter ~., data = rf.data.ps_Fruit_hori_diameter, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_hori_diameter.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_hori_diameter.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_hori_diameter.classify <- randomForest(response.ps_Fruit_hori_diameter ~., data = rf.data.ps_Fruit_hori_diameter, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_hori_diameter.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_hori_diameter.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Fruit_hori_diameter.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Fruit_hori_diameter.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Fruit_hori_diameter)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Fruit_hori_diameter)[r.s, ])
+write.csv(t.table, "RF.ps_Fruit_hori_diameter.t.table_Fruit_hori_diameter.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Fruit_hori_diameter, data = rf.data.ps_Fruit_hori_diameter[, c('response.ps_Fruit_hori_diameter', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Fruit_hori_diameter
+rf.data.ps_Fruit_hori_diameter$response.ps_Fruit_hori_diameter
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Fruit_hori_diameter[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Fruit_hori_diameter)[rownames(hm),'Fruit_hori_diameter']$Fruit_hori_diameter)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot19 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot19
+g19 <- ggplotGrob(plot19);g19
+
+# Creat the bargraph
+plot20 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill =  "#00A087B2") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot20
+
+
+g10 <- ggplotGrob(plot20);g10
+library(ggpubr)
+# Put them togethers
+RF11=ggarrange(g19, g10, align='h', nrow=1, ncol=2, widths=c(4,2));RF11
+tiff("RF11.tiff", units="in", width=12, height=2, res=300)
+RF11.tiff=RF11+plot_layout(nrow=1);RF11.tiff
+ggsave("RF11.tiff", plot = RF11.tiff)
+dev.off()
+
+```
+
+
+#Fruittaste
+```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/") #<--- CHANGE ACCORDINGLY
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Random_for/ps.RData")
+
+ps_Fruit_taste <- subset_samples(ps, Fruit_taste %in% c("Sweet", "Sour"));ps_Fruit_taste#[ 15588 taxa and 1102 samples ]
+#ovaries
+
+# Prunescale is the minimum average number of reads across samples that will be retained.
+# All OTUs that do not average > prunescale across samples will be dropped.
+ps_Fruit_taste <- subset_samples(ps, !is.na(Fruit_taste));ps_Fruit_taste
+
+prunescale.ps_Fruit_taste = 0.05
+
+# Prune out rare OTUs by mean relative abundance set by prunescale
+tax.mean.ps_Fruit_taste <- taxa_sums(ps_Fruit_taste)/nsamples(ps_Fruit_taste) # average number of reads for each otu
+sites.prune.ps_Fruit_taste <- prune_taxa(tax.mean.ps_Fruit_taste > prunescale.ps_Fruit_taste, ps_Fruit_taste)
+
+#Next, we are going to format a dataframe of predictors (OTUs) and responses (States)
+# Make a dataframe of training data with OTUs as column and samples as rows
+predictors.ps_Fruit_taste<- t(otu_table(sites.prune.ps_Fruit_taste));predictors.ps_Fruit_taste
+dim(predictors.ps_Fruit_taste)
+# 1102 1607
+
+# Make one column for our outcome/response variable 
+response.ps_Fruit_taste <- as.factor(sample_data(sites.prune.ps_Fruit_taste)$Fruit_taste);response.ps_Fruit_taste
+# Combine them into 1 data frame
+rf.data.ps_Fruit_taste <- data.frame(response.ps_Fruit_taste, predictors.ps_Fruit_taste);rf.data.ps_Fruit_taste
+str(rf.data.ps_Fruit_taste)
+# Set a random seed
+set.seed(579383)
+# My computer has 8 processor cores - adjust parameter of the following command as needed/desired
+registerDoParallel(2)
+
+
+# %dopar% implemented with foreach implements each loop call as an independent function call
+# and then parallelizes all the function calls across the number of processers set above with
+# registerDoParallel(). First, we need to set up a dataframe to store each bootstrap RF result.
+boot.imp.s <- data.frame(predictors=NULL, Try=NULL, MeanDecreaseGini=NULL)
+boot.imp.s <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_taste.classify <- randomForest(response.ps_Fruit_taste ~., data = rf.data.ps_Fruit_taste, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_taste.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_taste.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  cbind(imp.s, data.frame(Try=Try)) #)
+  
+}
+
+# Same (and independent) as above but this time we are storing results from the
+# out-of-bag error rates, so we car report the correct-incorrect classification
+# rate for each group, and what types of misclassifications were made.
+boot.oob <- NULL
+boot.oob <- foreach (Try=1:100, .combine=rbind) %dopar% {
+  
+  ps_Fruit_taste.classify <- randomForest(response.ps_Fruit_taste ~., data = rf.data.ps_Fruit_taste, ntree = 100, proximity=T, mtry=200)
+  print(ps_Fruit_taste.classify)
+  
+  # Make a data frame with predictor names and their importance
+  imp.s <- importance(ps_Fruit_taste.classify)
+  imp.s <- data.frame(predictors = rownames(imp.s), imp.s)
+  
+  c(boot.oob, ps_Fruit_taste.classify$err.rate[100,1])
+}
+
+#Display and visualize results
+
+# Look at the results
+mean(boot.oob)#0.1998276
+sd(boot.oob)#0.003660103
+range(boot.oob)#  0.1905626 0.2087112
+# Create a dataframe with summary statistics from our bootstrap runs
+summary.boot.s <- summaryBy(MeanDecreaseGini ~ predictors, data= boot.imp.s, FUN = c(mean, sd, std.error));summary.boot.s
+write.csv(summary.boot.s,"summary.boot.s_Fruit_taste.csv")
+# Look at it
+head(summary.boot.s)
+str(summary.boot.s)
+# Order the predictor levels by importance
+imp.s.sort <- arrange(summary.boot.s, desc(MeanDecreaseGini.mean));imp.s.sort
+imp.s.sort$predictors <- factor(imp.s.sort$predictors, levels = imp.s.sort$predictors)
+# Select the top 10 predictors
+imp.s.5 <- imp.s.sort[1:5, ];imp.s.5
+
+# What are those OTUs?
+# otunames.s = otunames of predictors
+# r.s = A logical containing which rows from phyloseq object were recovered as top 40 predictors
+otunames.s <- imp.s.5$predictors;otunames.s
+r.s <- rownames(tax_table(ps_Fruit_taste)) %in% otunames.s;r.s
+
+# Use r.s to pull out the taxonomic information for those OTUS in otunames.s
+t.table <- as.data.frame(tax_table(ps_Fruit_taste)[r.s, ])
+write.csv(t.table, "RF.ps_Fruit_taste.t.table_Fruit_taste.csv", quote=F,row.names=T)
+
+
+#VISUALIZATION HERE
+# Reformat the taxonomic names and paste them to OTU names for axis labels
+# (highest determined taxonomic rate, get rid of special characters, etc.)
+axislabels <- with(t.table, paste(rownames(t.table), gsub("[sgfocp]__","",Genus,perl=T) %>% gsub("_"," ",.,perl=T) %>% gsub("[\\s]?(unclassified|ge)[\\s]?","",.,perl=T)))
+names(axislabels) <- rownames(t.table)
+i <- grep("(uncultured)|([01234567890-]$)+", axislabels, perl=T)
+axislabels[i]<-paste(names(axislabels)[i], t.table$Family[i])
+
+# Now we sum the abundance of each OTU by state so we can order the
+# RF predictor OTUs by which state they were most abundant in, followed
+# by their importance value. This makes the heatmap easier to interpret.
+sums<-summaryBy(. ~ response.ps_Fruit_taste, data = rf.data.ps_Fruit_taste[, c('response.ps_Fruit_taste', as.character(otunames.s))], FUN = sum, keep.names = T);sums
+state.organize <- sapply(as.character(otunames.s), FUN = function(x) which.max(sums[,x]));state.organize
+sums$response.ps_Fruit_taste
+rf.data.ps_Fruit_taste$response.ps_Fruit_taste
+# hm is a dataframe of the abundance of the predictors, standardized and log transformed
+hm <- rf.data.ps_Fruit_taste[,as.character(otunames.s)] %>% decostand(method='max', MARGIN=2) %>% decostand(method='log');hm
+hm$sample <- gsub('_',' ',sample_data(ps_Fruit_taste)[rownames(hm),'Fruit_taste']$Fruit_taste)
+
+hm.melt <- melt(hm[c(order(state.organize), 6)]);hm.melt
+names(hm.melt) <- c("Tree","Taxon","StandardizedAbundance")
+
+#https://www.royfrancis.com/a-guide-to-elegant-tiled-heatmaps-in-r-2019/ (heatmaps)
+# Turn predictors into a factor (re-ordered the same as the hm.melt object so they match up)
+imp.s.5$predictors <- factor(imp.s.5$predictors, levels(imp.s.5$predictors)[order(state.organize)])
+
+# Creat the heatmap with the taxon names and OTUs
+
+plot19 <- ggplot(hm.melt, aes(x=Tree, y=Taxon, fill=StandardizedAbundance)) + 
+  geom_tile() + scale_fill_gradient(low="white", high="black") + 
+  theme(axis.text.x = element_text(angle=90, size=12), legend.position = "none", axis.text.y = element_text(hjust=0))  + 
+  scale_y_discrete(labels=axislabels)+theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                                            axis.title.y = element_text(face="bold", colour="black", size=12),
+                                            axis.text.x = element_text(face="bold", colour="black", size=12),
+                                            axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot19
+g19 <- ggplotGrob(plot19);g19
+
+# Creat the bargraph
+plot20 <- ggplot(imp.s.5, aes(x = predictors, y = MeanDecreaseGini.mean)) +
+  geom_bar(stat = "identity", fill = "coral3") +
+  ylab("Bootstrap Mean \u00b1 SD Gini Index") +
+  theme_bw() +
+  geom_errorbar( aes(x=predictors, ymin=MeanDecreaseGini.mean-MeanDecreaseGini.sd, ymax=MeanDecreaseGini.mean+MeanDecreaseGini.sd), width=0.75, alpha=0.9, size=0.5) +
+  coord_flip() + theme(axis.title.x = element_text(face="bold", colour="black", size=12),
+                       axis.title.y = element_text(face="bold", colour="black", size=12),
+                       axis.text.x = element_text(face="bold", colour="black", size=12),
+                       axis.text.y  = element_text(face="bold", colour="black", size=12))+ labs(tag = "");plot20
+g10 <- ggplotGrob(plot20);g10
+library(ggpubr)
+# Put them togethers
+RF12=ggarrange(g19, g10, align='h', nrow=1, ncol=2, widths=c(4,2));RF12
+tiff("RF12.tiff", units="in", width=12, height=2, res=300)
+RF12.tiff=RF12+plot_layout(nrow=1);RF12.tiff
+ggsave("RF12.tiff", plot = RF12.tiff)
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
