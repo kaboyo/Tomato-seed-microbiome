@@ -7,11 +7,11 @@ output: html_document
 #Load all the packages
 #set working directory
 
-#myworking director(wd)=/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome
+#setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 #replace this with your working directory
 ```{r, echo=F, warning= F}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 library(phyloseq);packageVersion("phyloseq")#‘1.46.0’
 library(vegan);packageVersion("vegan")# ‘2.6.4’
 library(genefilter);packageVersion("genefilter")#‘1.84.0’
@@ -102,18 +102,17 @@ library(ggpmisc)
 library(pairwiseAdonis)#library(devtools) install_github("pmartinezarbizu/pairwiseAdonis/pairwiseAdonis")
 #remotes::install_github("mahendra-mariadassou/phyloseq-extended", ref = "dev")
 library(phyloseq.extended)#remotes::install_github(repo = "mahendra-mariadassou/phyloseq-extended@v0.1.0.9000-beta", ref = "dev")
-
-```
-
-#load the scripts 
-```{r}
-setwd("wd")
+#The following need to be installed but NOT loaded (same naming of different functions):
+#library(metagMisc) #devtools::install_github("vmikk/metagMisc")
+#library(metagenomeSeq) #BiocManager::install("metagenomeSeq")
+source("Rscript_parwise.adonis.txt")
 source("aggregate_top_taxa.txt")
 source("PD.txt")
 source("aggregate_rare.txt")
 source("plot_composition.txt")
 source("RSCRIPT_parwise.adonis.txt")
 source("plot_hierarchy.R")
+#https://sites.northwestern.edu/researchcomputing/resources/using-git-&-github-with-r-rstudio/#github-r config
 ```
 
 
@@ -146,13 +145,13 @@ mycol = c("bisque4", "deeppink", "chartreuse4","blue","coral3","goldenrod","deep
 #Load data (ASV table, taxonomy & tree, & metadata)
 ```{r,echo = F}
 ##Imported feature table
-asv_tab <- read.table("wd/Table.txt", 
+asv_tab <- read.table("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Table.txt", 
               header=TRUE,
               row.names="OTUID");asv_tab
 asv_tab <- otu_table(asv_tab, taxa_are_rows = TRUE);asv_tab 
 
 ## Imported taxonomy table
-tax_tab <- read.table("wd/Taxonomy.txt", 
+tax_tab <- read.table("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Taxonomy.txt", 
               header=TRUE,
               sep="\t",
               row.names="OTUID");tax_tab
@@ -160,14 +159,14 @@ tax_tab <- as.matrix(tax_tab);tax_tab
 tax_tab <- tax_table(tax_tab);tax_tab
 
 ## Imported metadata file
-metadata <- read.csv("wd/Metadata.csv",
+metadata <- read.csv("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Metadata.csv",
               header=TRUE,
               row.names="SampleID");metadata
 #rownames(metadata) <- metadata[,1]
 metadata <- sample_data(metadata);metadata
 
 #import rooted tree
-rtree <- read.tree(file = "wd/tree.nwk");rtree
+rtree <- read.tree(file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/tree.nwk");rtree
 tree <- phy_tree(rtree)
 
 #import reference sequences
@@ -193,14 +192,14 @@ ps <- merge_phyloseq(
 summarize_phyloseq(ps)
 ps0 <- ps # 16460 taxa & 1197 samples
 save(ps0,
-file = "wd/ps0.RData")
+file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps0.RData")
 
 ```
 
 
 #clean the data
 ```{r,echo = FALSE,warning = FALSE}
-load("wd/ps0.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps0.RData")
 
 ps_clean = subset_taxa(ps0, Kingdom=="Bacteria");ps_clean# [ 6448 taxa & 84 samples ]
 ps_clean = subset_taxa(ps_clean, Phylum!="Cyanobacteria");ps_clean#  [ 15588 taxa & 1197 samples ]
@@ -216,7 +215,7 @@ summarize_phyloseq(ps) # Average reads = 22791, Total reads = 27281011, Singleto
 taxa_names(ps)[1:5]
 sample_data(ps)$total_reads <- sample_sums(ps)
 
-save(ps, file = "wd/ps.RData")
+save(ps, file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps.RData")
 
 K <- as.data.frame(table(tax_table(ps)[,"Kingdom"]));K
 P <- as.data.frame(table(tax_table(ps)[,"Phylum"]));P # 38 phyla
@@ -248,7 +247,7 @@ sums_ps
 # Define prevalence of each taxa; # (in how many samples did each taxa appear at least once)
 
 ```{r,echo = FALSE,warning = FALSE}
-load("wd/ps.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Tomato-seed-microbiome/ps.RData")
 
 prev0 = apply(X = otu_table(ps),
               MARGIN = ifelse(taxa_are_rows(ps), yes = 1, no = 2),
@@ -292,24 +291,44 @@ print(paste0("Initial #ASVs:", ntaxa(ps), ". #ASVs after prevalence filtering:",
 
 # save 
 ```{r}
-save(ps2, file = "wd/ps2.RData")
+save(ps2, file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 ```
 
-
-----
-#Figure S1A
-----
 ###plot rarefaction curves 
 #code based on https://microsud.github.io/microbiomeutilities/articles/microbiomeutilities.html
 ```{r, echo=FALSE,warning = FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(microbiomeutilities)
 # set seed
 set.seed(1)
 subsamples <- seq(0, 50000, by=500)[-1]
 #subsamples = c(10, 5000, 10000, 20000, 30000)
-############
-p<- plot_alpha_rcurve(ps2, index="observed",
+
+p <- plot_alpha_rcurve(ps2, index="observed",
+            subsamples = subsamples,
+            lower.conf = 0.025, 
+            upper.conf = 0.975,
+            group="Production_site_2",
+            label.color = "brown3",
+            label.size = 3,
+            label.min = TRUE);p
+
+p <- p + scale_color_manual(values = mycola) + 
+  scale_fill_manual(values = mycola)+ 
+  theme(axis.text=element_text(size=8), panel.grid=element_blank(),
+        strip.background = element_rect(colour=NA,fill="grey33"),
+        strip.text.x = element_text(face="bold"))+
+  theme(text=element_text(size=14,  family="sans"))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, ncol=6))+
+  theme(legend.position="none")+
+  labs(tag = "A")
+print(p)
+
+tiff("p.tiff", units="in", width=10, height=6, res=300)
+ggsave("p.TIFF", plot = p)
+
+######################
+p2<- plot_alpha_rcurve(ps2, index="observed",
                      subsamples = subsamples,
                      lower.conf = 0.025, 
                      upper.conf = 0.975,
@@ -318,151 +337,229 @@ p<- plot_alpha_rcurve(ps2, index="observed",
                      label.size = 3,
                      label.min = TRUE) 
 
-p <- p + scale_color_manual(values = mycola) + 
-    scale_fill_manual(values = mycola)+
-    theme(axis.text=element_text(size=8), panel.grid=element_blank(),
-    strip.background = element_rect(colour=NA,fill="grey33"),
-    strip.text.x = element_text(face="bold"))+
-    theme(text=element_text(size=16,  family="sans"))+
-    guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, ncol=6))+
-    theme(legend.position="none")+labs(tag = "")
-    print(p)
-    tiff("p.tiff", units="in", width=10, height=6, res=300)
-    ggsave("p.TIFF", plot = p)
+p2 <- p2 + scale_color_manual(values = mycola) + 
+  scale_fill_manual(values = mycola)+
+  theme(axis.text=element_text(size=8), panel.grid=element_blank(),
+        strip.background = element_rect(colour=NA,fill="grey33"),
+        strip.text.x = element_text(face="bold"))+
+  theme(text=element_text(size=16,  family="sans"))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, ncol=6))+
+  theme(legend.position="none")+labs(tag = "")
+print(p2)
+
+tiff("p2.tiff", units="in", width=10, height=6, res=300)
+ggsave("p2.TIFF", plot = p2)
 ```
-----
-#Fig.13 A $ B
-----
+
+
 #Plot correlation of shannon index & total reads (observed ASVs) [since this is common practice]
 ```{r, echo=FALSE, warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 
-corr1=ggplot(data = data.frame("total_reads" =  phyloseq::sample_sums(ps2),
-    "observed" = phyloseq::estimate_richness(ps2,
-    measures = "Observed")[, 1]),
-    aes(x = total_reads, y = observed)) +
-    geom_point() +
-    geom_smooth(method="lm", se = FALSE) +
-    labs(x = "\nTotal Reads", y = "Observed Richness\n")+
-    theme(panel.grid.major = element_blank(), 
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(colour = "gray33", size=0.4))+ 
-    theme(axis.title.x = element_text(face="bold", colour="gray33", size=15),
-    axis.title.y = element_text(face="bold", colour="gray33", size=15),
-    axis.text.x = element_text(colour="gray33", size=15),
-    axis.text.y  = element_text(colour="gray33", size=15))+
-    labs(tag = "A");corr1
+#corr1=ggplot(data = data.frame("total_reads" =  phyloseq::sample_sums(ps2),
+    #                           "observed" = phyloseq::estimate_richness(ps2, measures = "Observed")[, 1]),
+  #           aes(x = total_reads, y = observed)) +
+  #geom_point() +
+ # geom_smooth(method="lm", se = FALSE) +
+  #labs(x = "\nTotal Reads", y = "Observed Richness\n")+
+  #theme(panel.grid.major = element_blank(), 
+  #      panel.grid.minor = element_blank(),
+  #      panel.background = element_rect(colour = "gray33", size=0.4))+ 
+  #theme(axis.title.x = element_text(face="bold", colour="gray33", size=15),
+   #     axis.title.y = element_text(face="bold", colour="gray33", size=15),
+   #     axis.text.x = element_text(colour="gray33", size=15),
+  #      axis.text.y  = element_text(colour="gray33", size=15))+
+  #labs(tag = "A");corr1
 
 #############
-corr2=ggplot(data = data.frame("total_reads" =  phyloseq::sample_sums(ps2),
-    "Shannon" = phyloseq::estimate_richness(ps2, measures = "Shannon")[, 1]),
-    aes(x = total_reads, y = Shannon)) +
-    geom_point() +
-    geom_smooth(method="lm", se = FALSE) +
-    labs(x = "\nTotal Reads", y = "Shannon index\n")+
-    theme(panel.grid.major = element_blank(), 
-    panel.grid.minor = element_blank(),
-    panel.background = element_rect(colour = "gray33", size=0.4))+ 
-    theme(axis.title.x = element_text(face="bold", colour="gray33", size=15),
-    axis.title.y = element_text(face="bold", colour="gray33", size=15),
-    axis.text.x = element_text(colour="gray33", size=15),
-    axis.text.y  = element_text(colour="gray33", size=15))+
-    labs(tag = "B");corr2
+#corr2=ggplot(data = data.frame("total_reads" =  phyloseq::sample_sums(ps2),
+#                               "Shannon" = phyloseq::estimate_richness(ps2, measures = "Shannon")[, 1]),
+#             aes(x = total_reads, y = Shannon)) +
+#  geom_point() +
+ # geom_smooth(method="lm", se = FALSE) +
+ # labs(x = "\nTotal Reads", y = "Shannon index\n")+
+ # theme(panel.grid.major = element_blank(), 
+  #      panel.grid.minor = element_blank(),
+   #     panel.background = element_rect(colour = "gray33", size=0.4))+ 
+  #theme(axis.title.x = element_text(face="bold", colour="gray33", size=15),
+ #       axis.title.y = element_text(face="bold", colour="gray33", size=15),
+  #      axis.text.x = element_text(colour="gray33", size=15),
+   #     axis.text.y  = element_text(colour="gray33", size=15))+
+  #labs(tag = "B");corr2
 
-tiff("correlation.tiff", units="in", width=12, height=6, res=300)
-correlation.tiff=corr1+corr2+plot_layout(ncol=2);correlation.tiff
-ggsave("correlation.tiff", plot = correlation.tiff)
-dev.off()
+#tiff("correlation.tiff", units="in", width=12, height=6, res=300)
+#correlation.tiff=corr1+corr2+plot_layout(ncol=2);correlation.tiff
+#ggsave("correlation.tiff", plot = correlation.tiff)
+#dev.off()
 ```
 
-#Fig.2A
 #Transformed to relative abundances 
-#bar blot of the seed microbiome composition in 
-#the different cukltivars at the various locations for the top500 ASVs
+#bar blot of the seed microbiome composition in the different cukltivars at the various locations for the top500 ASVs
+
 ```{r,echo=FALSE,warning = FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 
 # Bar plots:
-#Showing individual replicates. Top 500 taxa
-    toptax = names(sort(taxa_sums(ps2), decreasing=TRUE))[1:500];toptax
-    ps.toptax = transform_sample_counts(ps2, function(x) {x/sum(x)*100});ps.toptax
-    ps.toptax <- prune_taxa(toptax, ps.toptax);ps.toptax
+##Showing individual replicates. Top 500 taxa
+toptax = names(sort(taxa_sums(ps2), decreasing=TRUE))[1:500];toptax
+ps.toptax = transform_sample_counts(ps2, function(x) {x/sum(x)*100});ps.toptax
+ps.toptax <- prune_taxa(toptax, ps.toptax);ps.toptax
 
 #Class level
-    psmelt(ps.toptax)
-    gg1=ggplot(psmelt(ps.toptax), aes(x=reorder(Sample, English_Name), y=Abundance, fill=Class))+
-    geom_bar(stat = "identity", position = "stack", width = 1) +
-    scale_fill_manual(values=c(ocean.dense(7), ocean.tempo(8)))+
-    #scale_fill_manual(values=c("#25725d", "#439b5b", "#7bc369", "#abd69a", "#d8e8b0",         "#cccda7", "#bfb77b", "#7e9998", "#92B2B2", "#83bbbf",     "#61acc1", "#58a0c4",       "#7087c3","#8973b4", "#512972"))+
-    #scale_fill_manual(values = mycola)+
-    xlab("") + ylab("Relative abundance (%)") +
-    facet_wrap(~reorder(Production_site_2, Sample), scales = "free_x", nrow = 1) + 
-    ggtitle("Class, top 500 ASVs") +
-    theme_pubclean() + theme(legend.position="bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0)) +
-    theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
-    guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 2))+
-    theme(text=element_text(size=8,  family="Arial"))+ labs(tag = "");gg1
+psmelt(ps.toptax)
+gg1=ggplot(psmelt(ps.toptax), aes(x=reorder(Sample, English_Name), y=Abundance, fill=Class))+
+  geom_bar(stat = "identity", position = "stack", width = 1) +
+  scale_fill_manual(values=c(ocean.dense(7), ocean.tempo(8)))+
+  #scale_fill_manual(values=c("#25725d", "#439b5b", "#7bc369", "#abd69a", "#d8e8b0", "#cccda7", "#bfb77b", "#7e9998", "#92B2B2", "#83bbbf", "#61acc1", "#58a0c4", "#7087c3","#8973b4", "#512972"))+
+  #scale_fill_manual(values = mycola)+
+  xlab("") + ylab("Relative abundance (%)") +
+  facet_wrap(~reorder(Production_site_2, Sample), scales = "free_x", nrow = 1) + 
+  ggtitle("Class, top 500 ASVs") +
+  theme_pubclean() + theme(legend.position="bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0)) +
+theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 2))+
+  theme(text=element_text(size=8,  family="Arial"))+ labs(tag = "");gg1
 
-    library(ggpubr)
-    tiff("gg1_Region_cultivar.tiff", units="in", width=10, height=6, res=300)
-    gg1_Region_cultivar.tiff=gg1+plot_layout(nrow = 1);gg1_Region_cultivar.tiff
-    ggsave("gg1_Region_cultivar.tiff", plot = gg1_Region_cultivar.tiff)
-    dev.off()
+library(ggpubr)
+tiff("gg1_Region_cultivar.tiff", units="in", width=10, height=6, res=300)
+gg1_Region_cultivar.tiff=gg1+plot_layout(nrow = 1);gg1_Region_cultivar.tiff
+ggsave("gg1_Region_cultivar.tiff", plot = gg1_Region_cultivar.tiff)
+dev.off()
+
+
+#Order level
+psmelt(ps.toptax)
+gg4=ggplot(psmelt(ps.toptax), aes(x=reorder(Sample, English_Name), y=Abundance, fill=Order))+
+  geom_bar(stat = "identity", position = "stack", width = 1) +
+  #scale_fill_manual(values=c(ocean.dense(7), ocean.tempo(8)))+
+  #scale_fill_manual(values=c("#25725d", "#439b5b", "#7bc369", "#abd69a", "#d8e8b0", "#cccda7", "#bfb77b", "#7e9998", "#92B2B2", "#83bbbf", "#61acc1", "#58a0c4", "#7087c3","#8973b4", "#512972"))+
+  scale_fill_manual(values = mycola)+
+  xlab("") + ylab("Relative abundance (%)") +
+  facet_wrap(~reorder(Production_site_2, Sample), scales = "free_x", nrow = 1) + 
+  ggtitle("Order, top 500 ASVs") +
+  theme_pubclean() + theme(legend.position="bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0)) +
+  theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 2))+
+  theme(text=element_text(size=8,  family="Arial"))+ labs(tag = "");gg4
+
+library(ggpubr)
+tiff("gg4_Region_cultivar.tiff", units="in", width=10, height=6, res=300)
+gg4_Region_cultivar.tiff=gg4+plot_layout(nrow = 1);gg4_Region_cultivar.tiff
+ggsave("gg4_Region_cultivar.tiff", plot = gg4_Region_cultivar.tiff)
+dev.off()
+
+#Insect_resistance as a factor
+Insect_resistance_ps_toptax <- subset_samples(ps.toptax, !is.na(Insect_resistance));Insect_resistance_ps_toptax
+gg3=ggplot(psmelt(Insect_resistance_ps_toptax), aes(x=reorder(Sample, English_Name), y=Abundance, fill=Family))+
+  geom_bar(stat = "identity", position = "stack", width = 1) +
+  #scale_fill_manual(values=c(ocean.dense(7), ocean.tempo(8)))+
+  #scale_fill_manual(values=c("#25725d", "#439b5b", "#7bc369", "#abd69a", "#d8e8b0", "#cccda7", "#bfb77b", "#7e9998", "#92B2B2", "#83bbbf", "#61acc1", "#58a0c4", "#7087c3","#8973b4", "#512972"))+
+  scale_fill_manual(values = mycola)+
+  xlab("") + ylab("Relative abundance (%)") +
+  facet_wrap(~reorder(Insect_resistance, Sample), scales = "free_x", nrow = 1) + 
+  ggtitle("Class, top 500 ASVs") +
+  theme_pubclean() + theme(legend.position="bottom", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0)) +
+  theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 8))+
+  theme(text=element_text(size=8,  family="Arial"))+ labs(tag = "A");gg3
+
+library(ggpubr)
+tiff("gg3_cultivar.tiff", units="in", width=14, height=8, res=300)
+gg3_cultivar.tiff=gg3+plot_layout(nrow = 1);gg3_cultivar.tiff
+ggsave("gg3_cultivar.tiff", plot = gg3_cultivar.tiff)
+dev.off()
+
 ```
 
 #Average percentage composition class
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
- load("wd/ps.RData")
+ load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps.RData")
 #Convert to relative abundance or the computation of the micribial composition in the samples
 #consider phylum
 GPf_Phylum = tax_glom(ps, "Phylum") %>% transform_sample_counts(function(x) {x * 100/sum(x)})
-df_Phylum = data.frame(Phylum = tax_table(GPf_Phylum)[,"Phylum"], 
-Mean = rowMeans(otu_table(GPf_Phylum)), row.names = NULL)
+df_Phylum = data.frame(Phylum = tax_table(GPf_Phylum)[,"Phylum"], Mean = rowMeans(otu_table(GPf_Phylum)), row.names = NULL)
 df_Phylum = df_Phylum[order(-df_Phylum$Mean),];df_Phylum
 head(df_Phylum,20)
 
 #consider Class
 GPf_Class = tax_glom(ps, "Class") %>% transform_sample_counts(function(x) {x * 100/sum(x)})
-df_Class = data.frame(Class = tax_table(GPf_Class)[,"Class"], 
-Mean = rowMeans(otu_table(GPf_Class)), row.names = NULL)
+df_Class = data.frame(Class = tax_table(GPf_Class)[,"Class"], Mean = rowMeans(otu_table(GPf_Class)), row.names = NULL)
 df_Class = df_Class[order(-df_Class$Mean),];df_Class
 head(df_Class,20)
 
 #consider Order
 GPf_Order = tax_glom(ps, "Order") %>% transform_sample_counts(function(x) {x * 100/sum(x)})
-df_Order = data.frame(Order = tax_table(GPf_Order)[,"Order"],
-Mean = rowMeans(otu_table(GPf_Order)), row.names = NULL)
+df_Order = data.frame(Order = tax_table(GPf_Order)[,"Order"], Mean = rowMeans(otu_table(GPf_Order)), row.names = NULL)
 df_Order = df_Order[order(-df_Order$Mean),];df_Order
 head(df_Order,20)
 
 #consider Family
 GPf_Family = tax_glom(ps, "Family") %>% transform_sample_counts(function(x) {x * 100/sum(x)})
-df_Family = data.frame(Family = tax_table(GPf_Family)[,"Family"],
-Mean = rowMeans(otu_table(GPf_Family)), row.names = NULL)
+df_Family = data.frame(Family = tax_table(GPf_Family)[,"Family"], Mean = rowMeans(otu_table(GPf_Family)), row.names = NULL)
 df_Family = df_Family[order(-df_Family$Mean),];df_Family
 head(df_Family,20)
 
 #consider Genus
 GPf_Genus = tax_glom(ps, "Genus") %>% transform_sample_counts(function(x) {x * 100/sum(x)})
-df_Genus = data.frame(Genus = tax_table(GPf_Genus)[,"Genus"],
-Mean = rowMeans(otu_table(GPf_Genus)), row.names = NULL)
+df_Genus = data.frame(Genus = tax_table(GPf_Genus)[,"Genus"], Mean = rowMeans(otu_table(GPf_Genus)), row.names = NULL)
 df_Genus = df_Genus[order(-df_Genus$Mean),];df_Genus
 head(df_Genus,20)
+
 ```
 
+## 6.3 CSS normalization
+#For certain downstream analyses; for example to compare different abundances of taxa between samples, the counts needs to be normalized to account for different sampling efforts, exposures, baselines, etc. We will normalize the samples using the CSS (Cumulative Sum Scaling) introduced in (Paulson et al. 2013), where the offset of a sample is the cumulative sum of counts in that sample, up to a quantile determined in a data driven way. Calculates scaling factors as the cumulative sum of ASVs abundances up to a data-derived threshold.
+#Ussing the CSS
+```{r, echo=FALSE, warning=FALSE}
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
+ps2.css = metagMisc::phyloseq_transform_css(ps2, norm = T, log = F);ps2.css#log2 FALSE!
+ps2.css = orient_taxa(ps2.css, "columns") #change taxa to columns
+#& the the TSS (proportion; relative abundance)
+ps2.css.prop = transform_sample_counts(ps2.css, function(x) {x/sum(x)*100});ps2.css.prop
+
+
+gg2=ggplot(psmelt(prune_taxa(toptax, ps2.css.prop)), aes(x=reorder(English_Name_2, Sample), y=Abundance, fill=Class))+
+  geom_bar(stat = "identity", position = "stack", width = 1) +
+  #scale_fill_manual(values = mycola)+
+  scale_fill_manual(values=c(ocean.dense(7), ocean.tempo(8)))+
+  #scale_fill_manual(values=c("#25725d", "#439b5b", "#7bc369", "#abd69a", "#d8e8b0", "#cccda7", "#bfb77b", "#7e9998", "#92B2B2", "#83bbbf", "#61acc1", "#58a0c4", "#7087c3", "#8973b4", "#512972"))+
+  xlab("") + ylab("CSS-Normalized relative abundance (%)") +
+  facet_wrap(~reorder(Production_site_2, Sample), scales = "free_x", nrow = 1) + 
+  ggtitle("Class, top 500 ASVs") + xlab("CSS-Normalized relative abundance (%)")+
+theme_pubclean() + theme(legend.position="top", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
+  guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 2))+
+  theme(text=element_text(size=10,family="Arial"))+ labs(tag = "A");gg2
+
+```
+
+#The conference trainings on data analysis
+#https://bioinfo.ird.fr/index.php/trainings-fr/trainings-2019-metabarcoding/trainings-2019-metabarcoding-practice/
+
+###################################################################################################
 #Beta-diversity dispersion
 #Hellinger transformed data for beta diversity analyses (i.e., transformation:method="hellinger")
 ```{r, echo=FALSE, warning=FALSE}
 #Hellinger transform the data
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 (ps_hellinger <- microbiome::transform(ps2, "hellinger"))  
-save(ps_hellinger, file = "wd/ps_hellinger.RData")
+save(ps_hellinger, file = "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps_hellinger.RData")
 
 #Load the hellinger transformed data
-load ("wd/ps_hellinger.RData")
+load ("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps_hellinger.RData")
+
 #Generate distance matrix
 hellinger_dist_matrix <- phyloseq::distance(ps_hellinger, method = "bray");hellinger_dist_matrix
+
 #The dispersion attributed to variation in culltivars 
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix ~ phyloseq::sample_data(ps_hellinger)$English_Name_2, permutation=999)
+#                                                     Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger)$English_Name_2   99   410.92 0.56909 14.634  0.001 ***
+#Residual                                           1097   311.14 0.43091                  
+#Total                                              1196   722.06 1.00000 
+#Dispersion test & plot
 dispr <- vegan::betadisper(hellinger_dist_matrix, phyloseq::sample_data(ps_hellinger)$English_Name_2);dispr #calculate the dispersion
 
 data_fram_cultivar <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_cultivar
@@ -495,10 +592,56 @@ dispr_cultivar=ggboxplot(data_fram_cultivar, x = "Group", y = "Distance_to_centr
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_cultivar
 #write_csv(data_fram_cultivar, file="data_fram_cultivar.csv")
+
+
+library(ggpubr)
+
+# Ensure the x-axis (Group) is ordered in ascending order
+data_fram_cultivar$Group <- factor(data_fram_cultivar$Group,
+                                   levels = sort(unique(data_fram_cultivar$Group)))
+
+dispr_cultivar = ggboxplot(
+  data_fram_cultivar,
+  x = "Group",
+  y = "Distance_to_centroid",
+  fill = "Group",
+  ylab = "Distance to centroid",
+  xlab = "Cultivars (n=100)"
+) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  theme(legend.position = "none") +
+  geom_jitter(width = 0.3, alpha = 0.2) +
+  theme(text = element_text(size = 8.5)) +
+  scale_color_gradientn(colours = c("grey", "pink")) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(colour = "gray33", size = 0.4)
+  ) +
+  theme(
+    axis.title.x = element_text(face = "bold", colour = "gray33", size = 12),
+    axis.title.y = element_text(face = "bold", colour = "gray33", size = 12),
+    axis.text.x = element_text(face = "bold", colour = "gray33", size = 12),
+    axis.text.y = element_text(colour = "gray33", size = 12)
+  ) +
+  theme(text = element_text(size = 12, family = "sans")) +
+  labs(tag = "") +
+  theme(plot.margin = margin(0, 0, 0, 0, "pt"))
+
+dispr_cultivar
+
 ```
 
 #Dispersion attributed to the regions of production
 ```{r, echo=FALSE,warning=FALSE}
+#ADONIS test
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
+
+vegan::adonis2(hellinger_dist_matrix ~ phyloseq::sample_data(ps_hellinger)$Production_site_2, permutation=999)
+#                                                      Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger)$Production_site_2   11   35.537 0.11415 13.882  0.001 ***
+#Residual                                              1185  275.776 0.88585                  
+#Total                                                 1196  311.313 1.00000  
 dispr <- vegan::betadisper(hellinger_dist_matrix, phyloseq::sample_data(ps_hellinger)$Production_site_2);dispr #calculate the dispersion
 data_fram_Region <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Region
 groups <- dispr$group
@@ -540,6 +683,13 @@ ps_hellinger_TMV_resistance <- subset_samples(ps_hellinger, !is.na(TMV_resistanc
 
 #Distance
 hellinger_dist_matrix_TMV <- phyloseq::distance(ps_hellinger_TMV_resistance, method = "bray");hellinger_dist_matrix_TMV
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_TMV ~ phyloseq::sample_data(ps_hellinger_TMV_resistance)$TMV_resistance, permutation=999)
+ #                                                                  Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_TMV_resistance)$TMV_resistance   2    2.309 0.01489 4.6794  0.001 ***
+#Residual                                                          619  152.751 0.98511                  
+#Total                                                             621  155.061 1.00000
 dispr <- vegan::betadisper(hellinger_dist_matrix_TMV, phyloseq::sample_data(ps_hellinger_TMV_resistance)$TMV_resistance);dispr #calculate the dispersion
 data_fram_TMV_resistance <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_TMV_resistance
 groups <- dispr$group
@@ -557,7 +707,7 @@ Dunn_dispr_TMV_resistance <- dunnTest(data_fram_TMV_resistance$Distance_to_centr
 library(rcompanion)
 CLD_Dunn_dispr_TMV_resistance = cldList(P.adj ~ Comparison, data=Dunn_dispr_TMV_resistance$res);CLD_Dunn_dispr_TMV_resistance 
 
-myco_TMV=c("#0B775E","#FB9A99","grey35");myco_TMV
+myco_TMV=c("chartreuse4","#FE7F9D","darkturquoise");myco_TMV
 dispr_TMV_resistancen=ggboxplot(data_fram_TMV_resistance, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "TMV_resistance")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_TMV)+
@@ -576,10 +726,19 @@ dispr_TMV_resistancen=ggboxplot(data_fram_TMV_resistance, x = "Group", y = "Dist
 
 #consider insect resistance
 ```{r,echo=FALSE, warning=FALSE}
+
 ps_hellinger_Insect_resistance <- subset_samples(ps_hellinger, !is.na(Insect_resistance));ps_hellinger_Insect_resistance
 
 #Generate distance matrix
 hellinger_dist_matrix_Insect_resistance <- phyloseq::distance(ps_hellinger_Insect_resistance, method = "bray");hellinger_dist_matrix_Insect_resistance
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_Insect_resistance ~ phyloseq::sample_data(ps_hellinger_Insect_resistance)$Insect_resistance, permutation=999)
+
+#                                                                        Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_Insect_resistance)$Insect_resistance   5   10.811 0.07079 9.0201  0.001 ***
+#Residual                                                                592  141.911 0.92921                  
+#Total                                                                   597  152.722 1.00000   
 dispr <- vegan::betadisper(hellinger_dist_matrix_Insect_resistance, phyloseq::sample_data(ps_hellinger_Insect_resistance)$Insect_resistance);dispr #calculate the dispersion
 data_fram_Insect_resistance <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Insect_resistance
 groups <- dispr$group
@@ -597,7 +756,7 @@ Dunn_dispr_Insect_resistance <- dunnTest(data_fram_Insect_resistance$Distance_to
 library(rcompanion)
 CLD_Dunn_dispr_Insect_resistance = cldList(P.adj ~ Comparison, data=Dunn_dispr_Insect_resistance$res);CLD_Dunn_dispr_Insect_resistance 
 
-myco_insRes=c("yellow3","grey35","chartreuse4","#0B775E","#00AFBB", "#FB9A99");myco_insRes
+myco_insRes=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73", "#FF0000");myco_insRes
 dispr_Insect_resistancen=ggboxplot(data_fram_Insect_resistance, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Insect resistance")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5))  +scale_fill_manual(values=myco_insRes)+
@@ -610,6 +769,8 @@ dispr_Insect_resistancen=ggboxplot(data_fram_Insect_resistance, x = "Group", y =
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_Insect_resistancen
+#################################################################################################
+#
 ```
 
 ##Fruit_shape 
@@ -618,6 +779,13 @@ ps_hellinger_Fruit_shape <- subset_samples(ps_hellinger, !is.na(Fruit_shape));ps
 
 #Generate distance matrix
 hellinger_dist_matrix_Fruit_shape <- phyloseq::distance(ps_hellinger_Fruit_shape, method = "bray");hellinger_dist_matrix_Fruit_shape
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_Fruit_shape ~ phyloseq::sample_data(ps_hellinger_Fruit_shape)$Fruit_shape, permutation=999)
+#                                                               Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_Fruit_shape)$Fruit_shape    2     4.41 0.01431 8.5779  0.001 ***
+#Residual                                                    1182   303.82 0.98569                  
+#Total                                                       1184   308.23 1.00000  
 dispr <- vegan::betadisper(hellinger_dist_matrix_Fruit_shape, phyloseq::sample_data(ps_hellinger_Fruit_shape)$Fruit_shape);dispr #calculate the dispersion
 data_fram_Fruit_shape <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Fruit_shape
 groups <- dispr$group
@@ -635,7 +803,7 @@ Dunn_dispr_Fruit_shape <- dunnTest(data_fram_Fruit_shape$Distance_to_centroid, d
 library(rcompanion)
 CLD_Dunn_dispr_Fruit_shape = cldList(P.adj ~ Comparison, data=Dunn_dispr_Fruit_shape$res);CLD_Dunn_dispr_Fruit_shape 
 #figure
-myco_shp=c("darkturquoise","chartreuse4","#FB9A99");myco_shp
+myco_shp=c("chartreuse4","#FE7F9D","darkturquoise");myco_shp
 dispr_Fruit_shapen=ggboxplot(data_fram_Fruit_shape, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Berry shape")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5))  +scale_fill_manual(values=myco_shp)+
@@ -648,14 +816,22 @@ dispr_Fruit_shapen=ggboxplot(data_fram_Fruit_shape, x = "Group", y = "Distance_t
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_Fruit_shapen
+#################################################################################################
 ```
-
 ##Fruit_color
 ```{r,echo=FALSE, warning=FALSE}
 ps_hellinger_Fruit_color <- subset_samples(ps_hellinger, !is.na(Fruit_color));ps_hellinger_Fruit_color
 
 #Generate distance matrix
 hellinger_dist_matrix_Fruit_color <- phyloseq::distance(ps_hellinger_Fruit_color, method = "bray");hellinger_dist_matrix_Fruit_color
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_Fruit_color ~ phyloseq::sample_data(ps_hellinger_Fruit_color)$Fruit_color, permutation=999)
+#                                                              Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_Fruit_color)$Fruit_color    4    7.877 0.02555 7.7362  0.001 ***
+#Residual                                                    1180  300.354 0.97445                  
+#Total                                                       1184  308.231 1.00000
+
 dispr <- vegan::betadisper(hellinger_dist_matrix_Fruit_color, phyloseq::sample_data(ps_hellinger_Fruit_color)$Fruit_color);dispr #calculate the dispersion
 data_fram_Fruit_color <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Fruit_color
 groups <- dispr$group
@@ -673,7 +849,7 @@ Dunn_dispr_Fruit_color <- dunnTest(data_fram_Fruit_color$Distance_to_centroid, d
 library(rcompanion)
 CLD_Dunn_dispr_Fruit_color = cldList(P.adj ~ Comparison, data=Dunn_dispr_Fruit_color$res);CLD_Dunn_dispr_Fruit_color 
 #figure
-myco_col=c("grey35","#00AFBB", "yellow3","chartreuse4","#FB9A99");myco_col
+myco_col=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_col
 dispr_Fruit_colorn=ggboxplot(data_fram_Fruit_color, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Berry color")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_col)+
@@ -686,6 +862,8 @@ dispr_Fruit_colorn=ggboxplot(data_fram_Fruit_color, x = "Group", y = "Distance_t
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_Fruit_colorn
+#################################################################################################
+
 ```
 
 #dispersion between the yield group
@@ -694,6 +872,13 @@ ps_hellinger_yield <- subset_samples(ps_hellinger, !is.na(yield));ps_hellinger_y
 
 #Generate distance matrix
 hellinger_dist_matrix_yield <- phyloseq::distance(ps_hellinger_yield, method = "bray");hellinger_dist_matrix_yield
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_yield ~ phyloseq::sample_data(ps_hellinger_yield)$yield, permutation=999)
+#                                                  Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_yield)$yield    4    8.256 0.03093 8.2746  0.001 ***
+#Residual                                        1037  258.680 0.96907                  
+#Total                                           1041  266.936 1.00000 
 dispr <- vegan::betadisper(hellinger_dist_matrix_yield, phyloseq::sample_data(ps_hellinger_yield)$yield);dispr #calculate the dispersion
 data_fram_yield <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_yield
 groups <- dispr$group
@@ -709,10 +894,10 @@ write_csv(Dunn_dispr_yield, "Dunn_dispr_yield.csv")
 Dunn_dispr_yield <- dunnTest(data_fram_yield$Distance_to_centroid, data_fram_yield$Group, method = "bonferroni");Dunn_dispr_yield
 # Obtaining significance letters
 library(rcompanion)
-CLD_Dunn_dispr_yield = cldList(P.adj ~ Comparison, data=Dunn_dispr_yield$res);CLD_Dunn_dispr_yield 
+#CLD_Dunn_dispr_yield = cldList(P.adj ~ Comparison, #data=Dunn_dispr_yield$res);CLD_Dunn_dispr_yield 
 
 #Fig
-myco_yield=c("chartreuse4","yellow3","#0B775E","#00AFBB","grey35");myco_yield
+myco_yield=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_yield
 dispr_yieldn=ggboxplot(data_fram_yield, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Yield in Kilograms")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_yield)+
@@ -725,6 +910,8 @@ dispr_yieldn=ggboxplot(data_fram_yield, x = "Group", y = "Distance_to_centroid",
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_yieldn
+#################################################################################################
+
 ```
 
 #ovaries
@@ -733,6 +920,13 @@ ps_hellinger_ovaries <- subset_samples(ps_hellinger, !is.na(ovaries));ps_helling
 
 #Generate distance matrix
 hellinger_dist_matrix_ovaries <- phyloseq::distance(ps_hellinger_ovaries, method = "bray");hellinger_dist_matrix_ovaries
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_ovaries ~ phyloseq::sample_data(ps_hellinger_ovaries)$ovaries, permutation=999)
+#                                                      Df SumOfSqs     R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_ovaries)$ovaries    2    5.122 0.0179 10.104  0.001 ***
+#Residual                                            1109  281.122 0.9821                  
+#Total                                               1111  286.245 1.0000
 dispr <- vegan::betadisper(hellinger_dist_matrix_ovaries, phyloseq::sample_data(ps_hellinger_ovaries)$ovaries);dispr #calculate the dispersion
 data_fram_ovaries <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_ovaries
 groups <- dispr$group
@@ -751,7 +945,7 @@ Dunn_dispr_ovaries <- dunnTest(data_fram_ovaries$Distance_to_centroid, data_fram
 library(rcompanion)
 CLD_Dunn_dispr_ovaries = cldList(P.adj ~ Comparison, data=Dunn_dispr_ovaries$res);CLD_Dunn_dispr_ovaries 
 
-myco_ovaries=c("#00AFBB","#FB9A99","chartreuse4");myco_ovaries
+myco_ovaries=c("chartreuse4","#FE7F9D","darkturquoise");myco_ovaries
 dispr_ovariesn=ggboxplot(data_fram_ovaries, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Number of Ovaries")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_ovaries)+
@@ -764,6 +958,7 @@ dispr_ovariesn=ggboxplot(data_fram_ovaries, x = "Group", y = "Distance_to_centro
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_ovariesn
+#################################################################################################
 ```
 
 #seedweight_1000
@@ -772,6 +967,13 @@ ps_hellinger_seedweight_1000 <- subset_samples(ps_hellinger, !is.na(seedweight_1
 
 #Generate distance matrix
 hellinger_dist_matrix_seedweight_1000 <- phyloseq::distance(ps_hellinger_seedweight_1000, method = "bray");hellinger_dist_matrix_seedweight_1000
+
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_seedweight_1000 ~ phyloseq::sample_data(ps_hellinger_seedweight_1000)$seedweight_1000, permutation=999)
+#                                                                     Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_seedweight_1000)$seedweight_1000   3    6.822 0.03147 9.1536  0.001 ***
+#Residual                                                            845  209.922 0.96853                  
+#Total                                                               848  216.744 1.00000  
 dispr <- vegan::betadisper(hellinger_dist_matrix_seedweight_1000, phyloseq::sample_data(ps_hellinger_seedweight_1000)$seedweight_1000);dispr #calculate the dispersion
 data_fram_seedweight_1000 <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_seedweight_1000
 groups <- dispr$group
@@ -790,7 +992,7 @@ Dunn_dispr_seedweight_1000 <- dunnTest(data_fram_seedweight_1000$Distance_to_cen
 library(rcompanion)
 CLD_Dunn_dispr_seedweight_1000 = cldList(P.adj ~ Comparison, data=Dunn_dispr_seedweight_1000$res);CLD_Dunn_dispr_seedweight_1000 
 
-myco_weight=c("#0B775E","#FB9A99","yellow3","grey35");myco_weight
+myco_weight=c("#0B775E","#FE7F9D","darkturquoise","#F0E442");myco_weight
 dispr_seedweight_1000n=ggboxplot(data_fram_seedweight_1000, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Weight in grams/1000 seeds")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_weight)+
@@ -803,6 +1005,8 @@ dispr_seedweight_1000n=ggboxplot(data_fram_seedweight_1000, x = "Group", y = "Di
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_seedweight_1000n
+
+
 ```
 
 #Fruit_hori_diameter
@@ -812,6 +1016,12 @@ ps_hellinger_Fruit_hori_diameter <- subset_samples(ps_hellinger, !is.na(Fruit_ho
 #Generate distance matrix
 hellinger_dist_matrix_Fruit_hori_diameter <- phyloseq::distance(ps_hellinger_Fruit_hori_diameter, method = "bray");hellinger_dist_matrix_Fruit_hori_diameter
 
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_Fruit_hori_diameter ~ phyloseq::sample_data(ps_hellinger_Fruit_hori_diameter)$Fruit_hori_diameter, permutation=999)
+#                                                                             Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_Fruit_hori_diameter)$Fruit_hori_diameter    2    5.201 0.01846 10.257  0.001 ***
+#Residual                                                                    1091  276.606 0.98154                  
+#Total                                                                       1093  281.807 1.00000 
 dispr <- vegan::betadisper(hellinger_dist_matrix_Fruit_hori_diameter, phyloseq::sample_data(ps_hellinger_Fruit_hori_diameter)$Fruit_hori_diameter);dispr #calculate the dispersion
 data_fram_Fruit_hori_diameter <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Fruit_hori_diameter
 groups <- dispr$group
@@ -830,7 +1040,7 @@ Dunn_dispr_Fruit_hori_diameter <- dunnTest(data_fram_Fruit_hori_diameter$Distanc
 library(rcompanion)
 CLD_Dunn_dispr_Fruit_hori_diameter = cldList(P.adj ~ Comparison, data=Dunn_dispr_Fruit_hori_diameter$res);CLD_Dunn_dispr_Fruit_hori_diameter 
 
-myco_horiz=c("chartreuse4","#00AFBB","#FB9A99");myco_horiz
+myco_horiz=c("chartreuse4","#FE7F9D","darkturquoise");myco_horiz
 dispr_Fruit_hori_diametern=ggboxplot(data_fram_Fruit_hori_diameter, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Fruit horizontal diameter/cm")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_horiz)+
@@ -843,6 +1053,8 @@ dispr_Fruit_hori_diametern=ggboxplot(data_fram_Fruit_hori_diameter, x = "Group",
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_Fruit_hori_diametern
+#################################################################################################
+
 ```
 
 ##Fruit_long_diameter
@@ -852,6 +1064,12 @@ ps_hellinger_Fruit_long_diameter <- subset_samples(ps_hellinger, !is.na(Fruit_lo
 #Generate distance matrix
 hellinger_dist_matrix_Fruit_long_diameter <- phyloseq::distance(ps_hellinger_Fruit_long_diameter, method = "bray");hellinger_dist_matrix_Fruit_long_diameter
 
+#ADONIS test
+vegan::adonis2(hellinger_dist_matrix_Fruit_long_diameter ~ phyloseq::sample_data(ps_hellinger_Fruit_long_diameter)$Fruit_long_diameter, permutation=999)
+#                                                                              Df SumOfSqs      R2      F Pr(>F)    
+#phyloseq::sample_data(ps_hellinger_Fruit_long_diameter)$Fruit_long_diameter    2    5.583 0.02014 11.086  0.001 ***
+#Residual                                                                    1079  271.687 0.97986                  
+#Total                                                                       1081  277.270 1.00000  
 dispr <- vegan::betadisper(hellinger_dist_matrix_Fruit_long_diameter, phyloseq::sample_data(ps_hellinger_Fruit_long_diameter)$Fruit_long_diameter);dispr #calculate the dispersion
 data_fram_Fruit_long_diameter <- data.frame(Distance_to_centroid=dispr$distances,Group=dispr$group);data_fram_Fruit_long_diameter
 groups <- dispr$group
@@ -870,7 +1088,7 @@ Dunn_dispr_Fruit_long_diameter <- dunnTest(data_fram_Fruit_long_diameter$Distanc
 library(rcompanion)
 CLD_Dunn_dispr_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_dispr_Fruit_long_diameter$res);CLD_Dunn_dispr_Fruit_long_diameter 
 
-myco_longdiam=c("chartreuse4","#00AFBB","#FB9A99" );myco_longdiam
+myco_longdiam=c("chartreuse4","#00AFBB","#FE7F9D" );myco_longdiam
 dispr_Fruit_long_diametern=ggboxplot(data_fram_Fruit_long_diameter, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Fruit longitudinal diameter/cm")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_longdiam)+
@@ -883,6 +1101,8 @@ dispr_Fruit_long_diametern=ggboxplot(data_fram_Fruit_long_diameter, x = "Group",
         axis.text.y  = element_text( colour="gray33", size=12))+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));dispr_Fruit_long_diametern
+################################################################################################
+#
 ```
 
 
@@ -917,7 +1137,7 @@ Dunn_dispr_Fruit_taste <- dunnTest(data_fram_Fruit_taste$Distance_to_centroid, d
 library(rcompanion)
 CLD_Dunn_dispr_Fruit_taste = cldList(P.adj ~ Comparison, data=Dunn_dispr_Fruit_taste$res);CLD_Dunn_dispr_Fruit_taste 
 
-myco_taste=c("#FB9A99","chartreuse4");myco_taste
+myco_taste=c("chartreuse4","#FE7F9D");myco_taste
 dispr_Fruit_tasten=ggboxplot(data_fram_Fruit_taste, x = "Group", y = "Distance_to_centroid", fill= "Group", ylab = "Distance to centroid", xlab = "Berry taste")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") + 
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_taste)+
@@ -933,8 +1153,6 @@ dispr_Fruit_tasten=ggboxplot(data_fram_Fruit_taste, x = "Group", y = "Distance_t
 ##########################################
 
 ```
-
-#Fig.S16 &17
 ```{r,echo=FALSE,warning=FALSE}
 #Merging
 library(patchwork)
@@ -949,14 +1167,17 @@ ggsave("Dist_from_centroid.tiff", plot = Dist_from_centroid.tiff)
 dev.off()
 ```
 
-#Beta-diversity  & associated stats
+#Computing the beta-diversity plots & stats
 #USING THE MicrobiotaProcess package
+
 #https://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.htm
 #https://yulab-smu.top/MicrobiotaProcessWorkshop/articles/MicrobiotaProcessWorkshop.html
+#library(MicrobiotaProcess)
+#Will consider the transformation by hellinger approach
 
-##Beta diversity (cultivars)
+##Consider the cultivars
 ```{r,echo=FALSE, warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 
 distme <- get_dist(ps2, distmethod ="bray", method="hellinger");distme
@@ -1040,21 +1261,21 @@ dev.off()
 ```{r,echo=FALSE,warning=FALSE}
 
 library(MicrobiotaProcess)
-ps2_2= subset_samples(ps2_2, Production_site_2 %in% c("Jiangsu"));ps2_2#[ 15421 taxa & 1102 samples ]
-distme_ps2_2 <- get_dist(ps2_2, distmethod ="bray", method="hellinger");distme_ps2_2
-sampleda_ps2_2 <- data.frame(sample_data(ps2_2), check.names=FALSE);sampleda_ps2_2
-sampleda_ps2_2 <- sampleda_ps2_2[match(colnames(as.matrix(distme_ps2_2)),rownames(sampleda_ps2_2)),,drop=FALSE];sampleda_ps2_2
-sampleda_ps2_2$English_Name_2 <- factor(sampleda_ps2_2$English_Name_2)
-adores <- adonis2(distme_ps2_2 ~ English_Name_2, data=sampleda_ps2_2, permutation=999);adores#change from adonis to adonis2
+ps2= subset_samples(ps2, Production_site_2 %in% c("Jiangsu"));ps2#[ 15421 taxa & 1102 samples ]
+distme_ps2 <- get_dist(ps2, distmethod ="bray", method="hellinger");distme_ps2
+sampleda_ps2 <- data.frame(sample_data(ps2), check.names=FALSE);sampleda_ps2
+sampleda_ps2 <- sampleda_ps2[match(colnames(as.matrix(distme_ps2)),rownames(sampleda_ps2)),,drop=FALSE];sampleda_ps2
+sampleda_ps2$English_Name_2 <- factor(sampleda_ps2$English_Name_2)
+adores <- adonis2(distme_ps2 ~ English_Name_2, data=sampleda_ps2, permutation=999);adores#change from adonis to adonis2
 #         Df SumOfSqs      R2      F Pr(>F)    
 #Model     50   72.347 0.51929 12.078  0.001 ***
 #Residual 559   66.971 0.48071                  
 #Total    609  139.318 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-##Fig.S14A
-pcoares_ps2_2 <- get_pcoa(obj=ps2_2, distmethod="bray", method="hellinger");pcoares_ps2_2#pcoa
-pcoaplot_ps2_2 <- ggordpoint(obj=pcoares_ps2_2, biplot=F, speciesannot=F,
+#Figure
+pcoares_ps2 <- get_pcoa(obj=ps2, distmethod="bray", method="hellinger");pcoares_ps2#pcoa
+pcoaplot_ps2 <- ggordpoint(obj=pcoares_ps2, biplot=F, speciesannot=F,
                               factorNames=c("English_Name_2"), ellipse=F) +
   scale_fill_manual(values=mycola)+
   guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, ncol=2))+
@@ -1065,18 +1286,18 @@ pcoaplot_ps2_2 <- ggordpoint(obj=pcoares_ps2_2, biplot=F, speciesannot=F,
         axis.text.y = element_text(size=12, face="bold", color = "black"))+
   theme(text=element_text(size=12,  family="sans"))+theme(legend.position = "right")+
   theme(legend.title=element_blank())+
-  theme(text=element_text(size=12,  family="sans"))+ labs(tag = "");pcoaplot_ps2_2
+  theme(text=element_text(size=12,  family="sans"))+ labs(tag = "");pcoaplot_ps2
 
-tiff("pcoaplot_ps2_2.tiff", units="in", width=8, height=5, res=300)
-pcoaplot_ps2_2.tiff=(pcoaplot_ps2_2);pcoaplot_ps2_2.tiff
-ggsave("pcoaplot_ps2_2.tiff", plot = pcoaplot_ps2_2.tiff)
+tiff("pcoaplot_ps2.tiff", units="in", width=8, height=5, res=300)
+pcoaplot_ps2.tiff=(pcoaplot_ps2);pcoaplot_ps2.tiff
+ggsave("pcoaplot_ps2.tiff", plot = pcoaplot_ps2.tiff)
 dev.off()
 #compositional plots across the selected regions Jiangu
 
 # Bar plots:
 ##Showing individual replicates. Top 500 taxa
-toptax = names(sort(taxa_sums(ps2_2), decreasing=TRUE))[1:500];toptax
-ps.toptax = transform_sample_counts(ps2_2, function(x) {x/sum(x)*100});ps.toptax
+toptax = names(sort(taxa_sums(ps2), decreasing=TRUE))[1:500];toptax
+ps.toptax = transform_sample_counts(ps2, function(x) {x/sum(x)*100});ps.toptax
 ps.toptax <- prune_taxa(toptax, ps.toptax);ps.toptax
 
 #Class level
@@ -1093,11 +1314,7 @@ gg1_jiangsu=ggplot(psmelt(ps.toptax), aes(x=reorder(Sample, English_Name), y=Abu
 theme(legend.text = element_text(face = c(rep("italic", 5), rep("plain", 5))))+
   guides(fill= guide_legend(keywidth = 0.6, keyheight = 0.6, nrow = 3))+
   theme(text=element_text(size=8,  family="Arial"))+ labs(tag = "");gg1_jiangsu
-```
 
-
-#Fig.S14B
-```{r}
 library(ggpubr)
 tiff("gg1_jiangsu.tiff", units="in", width=9, height=5, res=300)
 gg1_jiangsu.tiff=(gg1_jiangsu);gg1_jiangsu.tiff
@@ -1105,10 +1322,9 @@ ggsave("gg1_jiangsu.tiff", plot = gg1_jiangsu.tiff)
 dev.off()
 ```
 
-
-#consider the region of production a a factor
+#consider the region of production
 ```{r,echo=FALSE, warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 pcares <- get_pca(obj=ps2, method="hellinger");pcares# for PCA ordination to show sample distribution
 pcoares <- get_pcoa(obj=ps2, distmethod="bray", method="hellinger");pcoares#computes the pcoa distance matrices
@@ -1122,6 +1338,7 @@ adores <- adonis2(distme ~ Production_site_2, data=sampleda, permutation=999);ad
 #Residual          1185  275.776 0.88585                  
 #Total             1196  311.313 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1                
+
 
 #VisuAlizing the result (#PCA_pcoa_countries of origin)
 pcaplot1 <- ggordpoint(obj=pcares, pc=c(1, 2), biplot=F, speciesannot=F,
@@ -1152,7 +1369,7 @@ pcoaplot1 <- ggordpoint(obj=pcoares, biplot=F, speciesannot=F,
   theme(legend.title=element_blank())+
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "F");pcoaplot1
 
-#Fig.S13E&F
+#Combine the figures
 tiff("PCA_PCOA_Region.tiff", units="in", width=8, height=4, res=300)
 PCA_PCOA_Region.tiff=pcaplot1+pcoaplot1+plot_layout(ncol = 2);PCA_PCOA_Region.tiff
 ggsave("PCA_PCOA_Region.tiff", plot = PCA_PCOA_Region.tiff)
@@ -1162,7 +1379,7 @@ dev.off()
 
 #Insect_resistance
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 Bacteria_Insect_resistance <- subset_samples(ps2, !is.na(Insect_resistance));Bacteria_Insect_resistance
 distme_InsectRes <- get_dist(Bacteria_Insect_resistance, distmethod ="bray", method="hellinger");distme_InsectRes
@@ -1177,7 +1394,7 @@ adores <- adonis2(distme_InsectRes ~ Insect_resistance, data=sampleda_InsectRes,
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 #Figure
-myco_insRes=c("yellow3","grey35","chartreuse4","#0B775E","#00AFBB", "#FB9A99");myco_insRes
+myco_insRes=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73", "#FF0000");myco_insRes
 pcoares_InsectRes <- get_pcoa(obj=Bacteria_Insect_resistance, distmethod="bray", method="hellinger");pcoares_InsectRes#pcoa
 pcoaplot_InsectRes <- ggordpoint(obj=pcoares_InsectRes, biplot=F, speciesannot=F,
                               factorNames=c("Insect_resistance"), ellipse=F) +
@@ -1194,7 +1411,7 @@ pcoaplot_InsectRes <- ggordpoint(obj=pcoares_InsectRes, biplot=F, speciesannot=F
 ```
 #seedweight in grams/1000 seeds
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 Bacteria_seedweight_1000 <- subset_samples(ps2, !is.na(seedweight_1000));Bacteria_seedweight_1000#
 distme_seedweight_1000 <- get_dist(Bacteria_seedweight_1000, distmethod ="bray", method="hellinger");distme_seedweight_1000
@@ -1208,7 +1425,7 @@ adores <- adonis2(distme_seedweight_1000 ~ seedweight_1000, data=sampleda_seedwe
 #Total           848  216.744 1.00000
 
 #Figure
-myco_weight=c("#0B775E","#FB9A99","yellow3","grey35");myco_weight
+myco_weight=c("#0B775E","#FE7F9D","darkturquoise","#F0E442");myco_weight
 pcoares_seedweight_1000 <- get_pcoa(obj=Bacteria_seedweight_1000, distmethod="bray", method="hellinger");pcoares_seedweight_1000#pcoa
 pcoaplot_seedweight_1000 <- ggordpoint(obj=pcoares_seedweight_1000, biplot=F, speciesannot=F,
                                        factorNames=c("seedweight_1000"), ellipse=F) +
@@ -1226,7 +1443,7 @@ pcoaplot_seedweight_1000 <- ggordpoint(obj=pcoares_seedweight_1000, biplot=F, sp
 
 #yield
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 Bacteria_yield <- subset_samples(ps2, !is.na(yield));Bacteria_yield
 distme_yield <- get_dist(Bacteria_yield, distmethod ="bray", method="hellinger");distme_yield
@@ -1240,7 +1457,7 @@ adores <- adonis2(distme_yield ~ yield, data=sampleda_yield, permutation=999);ad
 #Total    1041  266.936 1.00000                 
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_yield=c("chartreuse4","yellow3","#0B775E","#00AFBB","grey35");myco_yield
+myco_yield=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_yield
 pcoares_yield <- get_pcoa(obj=Bacteria_yield, distmethod="bray", method="hellinger");pcoares_yield#pcoa
 pcoaplot_yield <- ggordpoint(obj=pcoares_yield, biplot=F, speciesannot=F,
                              factorNames=c("yield"), ellipse=F) +
@@ -1256,10 +1473,9 @@ pcoaplot_yield <- ggordpoint(obj=pcoares_yield, biplot=F, speciesannot=F,
   theme(text=element_text(size=12,  family="sans"))+ labs(tag = "");pcoaplot_yield
 
 ```
-
 #Berry Longitudinal Diameter
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 Bacteria_Fruit_long_diameter <- subset_samples(ps2, !is.na(Fruit_long_diameter));Bacteria_Fruit_long_diameter
 distme_Fruit_long_diameter <- get_dist(Bacteria_Fruit_long_diameter, distmethod ="bray", method="hellinger");distme_Fruit_long_diameter
@@ -1273,7 +1489,7 @@ adores <- adonis2(distme_Fruit_long_diameter ~ Fruit_long_diameter, data=sampled
 #Total               1081  277.270 1.00000                   
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_longdiam=c("chartreuse4","#00AFBB","#FB9A99" );myco_longdiam
+myco_longdiam=c("chartreuse4","#00AFBB","#FE7F9D" );myco_longdiam
 pcoares_Fruit_long_diameter <- get_pcoa(obj=Bacteria_Fruit_long_diameter, distmethod="bray", method="hellinger");pcoares_Fruit_long_diameter#pcoa
 pcoaplot_Fruit_long_diameter <- ggordpoint(obj=pcoares_Fruit_long_diameter, biplot=F, speciesannot=F,
                                            factorNames=c("Fruit_long_diameter"), ellipse=F) +
@@ -1291,7 +1507,7 @@ pcoaplot_Fruit_long_diameter <- ggordpoint(obj=pcoares_Fruit_long_diameter, bipl
 ```
 #Fruit_hori_diameter
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 Bacteria_Fruit_hori_diameter <- subset_samples(ps2, !is.na(Fruit_hori_diameter));Bacteria_Fruit_hori_diameter
 distme_Fruit_hori_diameter <- get_dist(Bacteria_Fruit_hori_diameter, distmethod ="bray", method="hellinger");distme_Fruit_hori_diameter
 sampleda_Fruit_hori_diameter <- data.frame(sample_data(Bacteria_Fruit_hori_diameter), check.names=FALSE);sampleda_Fruit_hori_diameter
@@ -1304,7 +1520,7 @@ adores <- adonis2(distme_Fruit_hori_diameter ~ Fruit_hori_diameter, data=sampled
 #Total               1093  293.121 1.0000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_horiz=c("chartreuse4","#00AFBB","#FB9A99");myco_horiz
+myco_horiz=c("chartreuse4","#FE7F9D","darkturquoise");myco_horiz
 pcoares_Fruit_hori_diameter <- get_pcoa(obj=Bacteria_Fruit_hori_diameter, distmethod="bray", method="hellinger");pcoares_Fruit_hori_diameter#pcoa
 pcoaplot_Fruit_hori_diameter <- ggordpoint(obj=pcoares_Fruit_hori_diameter, biplot=F, speciesannot=F,
                                            factorNames=c("Fruit_hori_diameter"), ellipse=F) +
@@ -1322,7 +1538,7 @@ pcoaplot_Fruit_hori_diameter <- ggordpoint(obj=pcoares_Fruit_hori_diameter, bipl
 ```
 #Fruit color
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 #Fruit color
 tiff("PCOA_Parameters.tiff", units="in", width=20, height=20, res=300)
 Bacteria_Fruit_color <- subset_samples(ps2, !is.na(Fruit_color));Bacteria_Fruit_color
@@ -1337,7 +1553,7 @@ adores <- adonis2(distme_Fcol ~ Fruit_color, data=sampleda_Fcol, permutation=999
 #Total       1184   722.10 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_col=c("grey35","#00AFBB", "yellow3","chartreuse4","#FB9A99");myco_col
+myco_col=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_col
 pcoares_Fcol <- get_pcoa(obj=Bacteria_Fruit_color, distmethod="bray", method="hellinger");pcoares_Fcol#pcoa
 pcoaplot_Fcol <- ggordpoint(obj=pcoares_Fcol, biplot=F, speciesannot=F,
                         factorNames=c("Fruit_color"), ellipse=F) +
@@ -1356,7 +1572,7 @@ pcoaplot_Fcol <- ggordpoint(obj=pcoares_Fcol, biplot=F, speciesannot=F,
 
 ##TMV resisitance (beta diversity stats & figure)
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 Bacteria_TMV_resistance <- subset_samples(ps2, !is.na(TMV_resistance));Bacteria_TMV_resistance
 distme_TmvRes <- get_dist(Bacteria_TMV_resistance, distmethod ="bray", method="hellinger");distme_TmvRes
@@ -1370,7 +1586,7 @@ adores <- adonis2(distme_TmvRes ~ TMV_resistance, data=sampleda_TmvRes, permutat
 #Total          621  161.461 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_TMV=c("#0B775E","#FB9A99","grey35");myco_TMV
+myco_TMV=c("chartreuse4","#FE7F9D","darkturquoise");myco_TMV
 pcoares_TmvRes <- get_pcoa(obj=Bacteria_TMV_resistance, distmethod="bray", method="hellinger");pcoares_TmvRes#pcoa
 pcoaplot_TmvRes <- ggordpoint(obj=pcoares_TmvRes, biplot=F, speciesannot=F,
                               factorNames=c("TMV_resistance"), ellipse=F) +
@@ -1388,7 +1604,7 @@ pcoaplot_TmvRes <- ggordpoint(obj=pcoares_TmvRes, biplot=F, speciesannot=F,
 ```
 #NO_ovaries
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 
 Bacteria_ovaries <- subset_samples(ps2, !is.na(ovaries));Bacteria_ovaries
@@ -1403,7 +1619,7 @@ adores <- adonis2(distme_ovaries ~ ovaries, data=sampleda_ovaries, permutation=9
 #Total    1111  297.798 1.00000                  
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_ovaries=c("#00AFBB","#FB9A99","chartreuse4");myco_ovaries
+myco_ovaries=c("chartreuse4","#FE7F9D","darkturquoise");myco_ovaries
 pcoares_ovaries <- get_pcoa(obj=Bacteria_ovaries, distmethod="bray", method="hellinger");pcoares_ovaries#pcoa
 pcoaplot_ovaries <- ggordpoint(obj=pcoares_ovaries, biplot=F, speciesannot=F,
                                factorNames=c("ovaries"), ellipse=F) +
@@ -1422,7 +1638,7 @@ pcoaplot_ovaries <- ggordpoint(obj=pcoares_ovaries, biplot=F, speciesannot=F,
 ```
 #Fruitshape
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 
 Bacteria_Fruit_shape <- subset_samples(ps2, !is.na(Fruit_shape));Bacteria_Fruit_shape
@@ -1438,7 +1654,7 @@ adores <- adonis2(distme_Fshape ~ Fruit_shape, data=sampleda_Fshape, permutation
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 
-myco_shp=c("darkturquoise","chartreuse4","#FB9A99");myco_shp
+myco_shp=c("chartreuse4","#FE7F9D","darkturquoise");myco_shp
 pcoares_Fshape <- get_pcoa(obj=Bacteria_Fruit_shape, distmethod="bray", method="hellinger");pcoares_Fshape#pcoa
 pcoaplot_Fshape <- ggordpoint(obj=pcoares_Fshape, biplot=F, speciesannot=F,
                               factorNames=c("Fruit_shape"), ellipse=F) +
@@ -1457,7 +1673,7 @@ pcoaplot_Fshape <- ggordpoint(obj=pcoares_Fshape, biplot=F, speciesannot=F,
 
 #Fruit_taste
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 library(MicrobiotaProcess)
 
 Bacteria_Fruit_taste <- subset_samples(ps2, Fruit_taste %in% c("Sweet", "Sour"));Bacteria_Fruit_taste#[ 15588 taxa & 1102 samples ]
@@ -1472,7 +1688,7 @@ adores <- adonis2(distme_Fruit_taste ~ Fruit_taste, data=sampleda_Fruit_taste, p
 #Total       1101   286.03 1.00000                   
 #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ##############################################################################################################################################################################################################
-myco_taste=c("#FB9A99","chartreuse4");myco_taste
+myco_taste=c("chartreuse4","#FE7F9D");myco_taste
 pcoares_Fruit_taste <- get_pcoa(obj=Bacteria_Fruit_taste, distmethod="bray", method="hellinger");pcoares_Fruit_taste#pcoa
 pcoaplot_Fruit_taste <- ggordpoint(obj=pcoares_Fruit_taste, biplot=F, speciesannot=F,
                                    factorNames=c("Fruit_taste"), ellipse=F) +
@@ -1490,7 +1706,8 @@ pcoaplot_Fruit_taste <- ggordpoint(obj=pcoares_Fruit_taste, biplot=F, speciesann
 
 ```
 
-#Fig.3 & Fig.S15
+
+
 ```{r,echo=FALSE,warning=FALSE}
 library(patchwork)
 tiff("PCOA_Parameters.tiff", units="in", width=10, height=13, res=300)
@@ -1512,7 +1729,7 @@ library(ggplot2)
 library(MicrobiotaProcess)
 #citation("MicrobiotaProcess")
 
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 
 classtaxa <- get_taxadf(obj=ps2, taxlevel=3);classtaxa
 phylataxa <- get_taxadf(obj=ps2, taxlevel=2);phylataxa
@@ -1717,8 +1934,6 @@ ffam_Insect_resistance <- ggbartax(obj=Famtaxa, facetNames="Insect_resistance", 
         legend.text = element_text(color = "black", size = 12))+
   theme(text=element_text(family="sans"))+ coord_flip();ffam_Insect_resistance
 
-#Fig.S18
-
 tiff("Barplot_Parameters.tiff", units="in", width=15, height=11, res=300)
 Barplot_Parameters.tiff=ffam_seedweight_1000+ffam_yield+ffam_Fruit_long_diameter+ffam_Fruit_hori_diameter+ffam_Fruit_color+ffam_TMV_resistance+ffam_ovaries+ffam_Fruit_shape+ffam_Fruit_taste+plot_layout(ncol = 3);Barplot_Parameters.tiff
 ggsave("Barplot_Parameters.tiff", plot = Barplot_Parameters.tiff)
@@ -1777,8 +1992,7 @@ dev.off()
 
 #' Please set the directory of the script as the working folder (e.g D:/studyname/NGS-Data/Rhea/normalize/)
 #' Note: the path is denoted by forward slash "/"
-setwd("wd/Rhea_package/1.Normalization_2.Alpha-Diversity")    #<--- CHANGE ACCORDINGLY
-
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 #' Please give the file name of the original OTU-table with taxonomic classification
 file_name <- "Table.txt"                   #<--- CHANGE ACCORDINGLY
 
@@ -1955,7 +2169,7 @@ dev.off()
 
 # Write the normalized table in a file & copy in directories alpha-diversity & beta-diversity if existing
 write.table(norm_otu_table, "OTUs_Table-norm.tab", sep = "\t",col.names = NA, quote = FALSE)
-suppressWarnings (try(write.table(norm_otu_table,"wd/Rhea_package/1.Normalization_2.Alpha-Diversity/OTUs_Table-norm.tab", sep = "\t",col.names = NA, quote = FALSE), silent =TRUE))
+suppressWarnings (try(write.table(norm_otu_table,"/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Rhea_package/1.Normalization_2.Alpha-Diversity/OTUs_Table-norm.tab", sep = "\t",col.names = NA, quote = FALSE), silent =TRUE))
 
 # Write the rarefaction table
 write.table(curvedf, "RarefactionCurve.tab", sep ="\t", quote = FALSE, row.names = FALSE)
@@ -2005,7 +2219,7 @@ if(!flag) { stop("
 
 #' Please set the directory of the script as working folder (e.g D:/MyStudy/NGS/Rhea/alpha-diversity)
 #' Note: the path is denoted by forward slash "/"
-setwd("wd/Rhea/2.Alpha-Diversity/Diversity_500_rarefaction")    #<--- CHANGE ACCORDINGLY
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Rhea/2.Alpha-Diversity/Diversity_500_rarefaction")    #<--- CHANGE ACCORDINGLY
 
 #' Please give the file name of the normalized OTU-table (without taxonomic classification)
 file_name <- "OTUs_Table-norm.tab"                #<--- CHANGE ACCORDINGLY
@@ -2088,7 +2302,7 @@ Simpson.effective <- function(x)
 ##################################################################################
 
 # Read a normalized OTU-table without taxonomy  
-otu_table <- read.table ("wd/Rhea_package/1.Normalization_2.Alpha-Diversity/OTUs_Table-norm.tab", 
+otu_table <- read.table ("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Rhea_package/1.Normalization_2.Alpha-Diversity/OTUs_Table-norm.tab", 
                        check.names = FALSE, 
                        header=TRUE, 
                        dec=".", 
@@ -2113,7 +2327,7 @@ otus_div_stats$Simpson.Index<-apply(my_otu_table,1,Simpson.concentration)
 otus_div_stats$Simpson.Effective<-apply(my_otu_table,1,Simpson.effective)
 otus_div_stats$Evenness <- otus_div_stats$Shannon.Index/log(otus_div_stats$Richness,2)
 
-setwd("wd/Rhea_package/1.Normalization_2.Alpha-Diversity")
+set/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/Rhea_package/1.Normalization_2.Alpha-Diversity")
 # Write the results in a file & copy in directory "Serial-Group-Comparisons" if existing
 write.table(otus_div_stats, "alpha-diversity.tab", sep="\t", col.names=NA, quote=FALSE)
 suppressWarnings (try(write.table(otus_div_stats[c(1,2,3,5,7)], "../Rhea_package/1.Normalization_2.Alpha-Diversity/alpha-diversity.tab", sep = "\t",col.names = NA, quote = FALSE), silent =TRUE))
@@ -2124,7 +2338,7 @@ suppressWarnings (try(write.table(otus_div_stats[c(1,2,3,5,7)], "../Rhea_package
 ```
 
 ```{r,echo=FALSE,warning=FALSE}
-load("wd/ps2.RData")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
 
 #calculate community phylogenetic diversity & merge it to the figure above
 summary(sample_sums(ps2))#[ 15421 taxa & 1197 samples ]
@@ -2136,11 +2350,12 @@ Bacteria_subsamp <- rarefy_even_depth(ps2, sample.size=500 , rngseed=5163, repla
 
 ```
 
-#Statistics for alpha diversity
+
+#STATISTICS FOR ALPHA DIVERSITY
 ##Import the rarefied dataset & compute the statistics
 #Load additional libraries
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 library(microViz)
 library(ggtext)
@@ -2213,12 +2428,15 @@ write_csv(x,"x.csv")
 
 alpha_500_PD %>%
     get_summary_stats(Shannon_Index, show = c("mean", "sd", "median", "iqr"))
+alpha_500_PD %>%
+    get_summary_stats(Richness, show = c("mean", "sd", "median", "iqr"))
 
 alpha_500_PD$Shannon_Index
 ```
 
 #consider rhe richness index
 ```{r,echo=FALSE,warning=FALSE}
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 # RICHNESS
 kruskal.test(Richness ~ English_Name_2, data = alpha_500_PD)
@@ -2346,12 +2564,13 @@ Dunn_tomato_Richness_Fruit_long_diameter <- dunnTest(alpha_500_PD_Fruit_long_dia
 # Obtaining significance letters
 library(rcompanion)
 CLD_Dunn_tomato_Richness_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_tomato_Richness_Fruit_long_diameter$res);CLD_Dunn_tomato_Richness_Fruit_long_diameter 
+
 ```
  
  
 #EFFECTIVE RICHNESS
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 kruskal.test(Effective_Richness ~ English_Name_2, data = alpha_500_PD)
 
@@ -2481,7 +2700,7 @@ CLD_Dunn_tomato_Effective_Richness_Fruit_long_diameter = cldList(P.adj ~ Compari
  
 #SHANNON INDEX
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 kruskal.test(Shannon_Index ~ English_Name_2, data = alpha_500_PD)
 
 kruskal.test(Shannon_Index ~ Production_site_2, data = alpha_500_PD)
@@ -2611,7 +2830,7 @@ CLD_Dunn_tomato_Shannon_Index_Fruit_long_diameter = cldList(P.adj ~ Comparison, 
 #Effective Shannon-diversity index
  
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 kruskal.test(Shannon_Effective ~ English_Name_2, data = alpha_500_PD)
 
@@ -2739,7 +2958,7 @@ CLD_Dunn_tomato_Shannon_Effective_Fruit_long_diameter = cldList(P.adj ~ Comparis
  
 #PHYLOGENETIC DIVERSITY
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 kruskal.test(PD ~ English_Name_2, data = alpha_500_PD)
 
@@ -2869,7 +3088,7 @@ CLD_Dunn_tomato_PD_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_t
 
 #Simpson_Index
 ```{r,echo=FALSE,warning=F}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 
 kruskal.test(Simpson_Index ~ English_Name_2, data = alpha_500_PD)
@@ -2998,7 +3217,7 @@ CLD_Dunn_tomato_Simpson_Index_Fruit_long_diameter = cldList(P.adj ~ Comparison, 
 #Effective simpson index
 ```{r,echo=FALSE,warning=FALSE}
 ########################################################################################################
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 kruskal.test(Simpson_Effective ~English_Name_2, data = alpha_500_PD)
 
@@ -3126,7 +3345,7 @@ CLD_Dunn_tomato_Simpson_Effective_Fruit_long_diameter = cldList(P.adj ~ Comparis
 
 #EVENNESS
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 
 kruskal.test(Evenness ~ English_Name_2, data = alpha_500_PD)
 
@@ -3252,11 +3471,9 @@ library(rcompanion)
 CLD_Dunn_tomato_Evenness_Fruit_long_diameter = cldList(P.adj ~ Comparison, data=Dunn_tomato_Evenness_Fruit_long_diameter$res);CLD_Dunn_tomato_Evenness_Fruit_long_diameter 
 ```
 
-
-
 #Alpha diversity  graphics  
 ```{r,echo=FALSE,warning=FALSE}
-setwd("wd")
+setwd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome")
 #1:richness_shannon_pd_Simpson_eveness.tiff
 plot_richness=ggboxplot(alpha_500_PD, x = "English_Name_2", y = "Richness", fill= "English_Name_2",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
@@ -3271,6 +3488,16 @@ plot_richness=ggboxplot(alpha_500_PD, x = "English_Name_2", y = "Richness", fill
   theme(text=element_text(size=18,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_richness
 
+
+ggsave(
+  "/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/PA.tiff",
+  plot = PA,
+  scale = 1,
+  width = 18,
+  height = 9,
+  units = "cm",
+  dpi = 600
+)
 
 #SHANON DIVERSITY
 plot_Shannon=ggboxplot(alpha_500_PD, x = "English_Name_2", y = "Shannon_Index", fill= "English_Name_2", ylab = "Shannon Index", xlab = "Tomato cultivars")+
@@ -3383,10 +3610,9 @@ plot_effective_Simpson=ggboxplot(alpha_500_PD, x = "English_Name_2", y = "Simpso
   theme(text=element_text(size=16,  family="sans"))+ labs(tag = "")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_effective_Simpson
 
-----
-#Fig.S21
-----
-tiff("pd_Simpson_eveness_Effective_alpha_diversity.tiff", units="in", width=19, height=19, res=300)
+
+
+tiff("pd_Simpson_eveness_Effective_alpha_diversity.tiff", units="in", width=19, height=12, res=300)
 pd_Simpson_eveness_Effective_alpha_diversity.tiff=(p2/plot_PD/plot_Simpson/plot_evenness/plot_effective_richness/plot_effective_Shannon/plot_effective_Simpson);pd_Simpson_eveness_Effective_alpha_diversity.tiff
 ggsave("pd_Simpson_eveness_Effective_alpha_diversity.tiff", plot = pd_Simpson_eveness_Effective_alpha_diversity.tiff)
 dev.off()
@@ -3508,21 +3734,16 @@ plot_evenness_prod_site=ggboxplot(alpha_500_PD, x = "Production_site_2", y = "Ev
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_prod_site
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
-----
-#Fig.S2
-----
-tiff("richness_shannon_pd_Simpson_eveness_production_site.tiff", units="in", width=13, height=12, res=300)
+tiff("richness_shannon_pd_Simpson_eveness_priduction_site.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_priduction_site.tiff=(plot_richness_prod_site+plot_effective_richness_prod_site+plot_Shannon_prod_site+plot_effective_Shannon_prod_site+plot_PD_prod_site+plot_Simpson_prod_site+plot_effective_Simpson_prod_site+plot_evenness_prod_site+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_priduction_site.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_priduction_site.tiff", plot = richness_shannon_pd_Simpson_eveness_priduction_site.tiff)
 dev.off()
-
-###############################################################################################
+###########################################################################################################################
 
 #Dataframe
 alpha_500_PD_Fruit_color=alpha_500_PD[!is.na(alpha_500_PD$Fruit_color),];alpha_500_PD_Fruit_color
-
-
-myco_col=c("grey35","#00AFBB", "yellow3","chartreuse4","#FB9A99");myco_col
+#####################################################################################################################################################
+myco_col=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_col
 #FRUIT COLOR FRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLORFRUIT COLOR
 
 #alpha_500_PD_Fruit_color
@@ -3635,18 +3856,15 @@ plot_evenness_Fruit_color=ggboxplot(alpha_500_PD_Fruit_color, x = "Fruit_color",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_color
 
-----
-#Fig.S7
-----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_color.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_color.tiff=(plot_richness_Fruit_color+plot_effective_richness_Fruit_color+plot_Shannon_Fruit_color+plot_effective_Shannon_Fruit_color+plot_PD_Fruit_color+plot_Simpson_Fruit_color+plot_effective_Simpson_Fruit_color+plot_evenness_Fruit_color+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_color.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_color.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_color.tiff)
 dev.off()
 
-###############################################################################################
+##################################################################################################################
 alpha_500_PD_Fruit_taste=alpha_500_PD[!is.na(alpha_500_PD$Fruit_taste),];alpha_500_PD_Fruit_taste
-myco_taste=c("#FB9A99","chartreuse4");myco_taste
-############################
+myco_taste=c("chartreuse4","#FE7F9D");myco_taste
+##############################################################################################################################################################################################################################################
 plot_richness_Fruit_taste=ggboxplot(alpha_500_PD_Fruit_taste, x = "Fruit_taste", y = "Richness", fill= "Fruit_taste",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_taste)+
@@ -3759,18 +3977,15 @@ plot_evenness_Fruit_taste=ggboxplot(alpha_500_PD_Fruit_taste, x = "Fruit_taste",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_taste
 
-----
-#Fig.S8
-----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff=(plot_richness_Fruit_taste+plot_effective_richness_Fruit_taste+plot_Shannon_Fruit_taste+plot_effective_Shannon_Fruit_taste+plot_PD_Fruit_taste+plot_Simpson_Fruit_taste+plot_effective_Simpson_Fruit_taste+plot_evenness_Fruit_taste+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_taste.tiff)
 dev.off()
+##############################################################################################################################################################################################################################################
 
-###############################################################################################
 alpha_500_PD_Fruit_shape=alpha_500_PD[!is.na(alpha_500_PD$Fruit_shape),];alpha_500_PD_Fruit_shape
-myco_shp=c("darkturquoise","chartreuse4","#FB9A99");myco_shp
-#########################
+myco_shp=c("chartreuse4","#FE7F9D","darkturquoise");myco_shp
+##############################################################################################################################################################################################################################################
 alpha_500_PD_Fruit_shape=alpha_500_PD[!is.na(alpha_500_PD$Fruit_shape),];alpha_500_PD_Fruit_shape
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", units="in", width=20, height=20, res=300)
 plot_richness_Fruit_shape=ggboxplot(alpha_500_PD_Fruit_shape, x = "Fruit_shape", y = "Richness", fill= "Fruit_shape",  ylab = "Richness", xlab = "")+
@@ -3884,19 +4099,14 @@ plot_evenness_Fruit_shape=ggboxplot(alpha_500_PD_Fruit_shape, x = "Fruit_shape",
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_shape
 
-----
-#Fig.S6
-----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff=(plot_richness_Fruit_shape+plot_effective_richness_Fruit_shape+plot_Shannon_Fruit_shape+plot_effective_Shannon_Fruit_shape+plot_PD_Fruit_shape+plot_Simpson_Fruit_shape+plot_effective_Simpson_Fruit_shape+plot_evenness_Fruit_shape+ plot_layout(ncol= 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_shape.tiff)
 dev.off()
-
-###############################################################################################
+###########################################################################################################################
 alpha_500_PD_TMV_resistance=alpha_500_PD[!is.na(alpha_500_PD$TMV_resistance),];alpha_500_PD_TMV_resistance
-myco_TMV=c("#0B775E","#FB9A99","grey35");myco_TMV
-#############################
-#############################
+myco_TMV=c("chartreuse4","#FE7F9D","darkturquoise");myco_TMV
+###########################################################################################################################
 plot_richness_TMV_resistance=ggboxplot(alpha_500_PD_TMV_resistance, x = "TMV_resistance", y = "Richness", fill= "TMV_resistance",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_TMV)+
@@ -4013,7 +4223,7 @@ ggsave("richness_shannon_pd_Simpson_eveness_TMV_resistance.tiff", plot = richnes
 dev.off()
 ###########################################################################################################################
 alpha_500_PD_Insect_resistance=alpha_500_PD[!is.na(alpha_500_PD$Insect_resistance),];alpha_500_PD_Insect_resistance
-myco_insRes=c("yellow3","grey35","chartreuse4","#0B775E","#00AFBB", "#FB9A99");myco_insRes
+myco_insRes=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73", "#FF0000");myco_insRes
 ##############################################################################################################################################################################################################################################
 plot_richness_Insect_resistance=ggboxplot(alpha_500_PD_Insect_resistance, x = "Insect_resistance_2", y = "Richness", fill= "Insect_resistance_2",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
@@ -4126,18 +4336,14 @@ plot_evenness_Insect_resistance=ggboxplot(alpha_500_PD_Insect_resistance, x = "I
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Insect_resistance
 
-----
-#Fig.S3
-----
 tiff("richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff=(plot_richness_Insect_resistance+plot_effective_richness_Insect_resistance+plot_Shannon_Insect_resistance+plot_effective_Shannon_Insect_resistance+plot_PD_Insect_resistance+plot_Simpson_Insect_resistance+plot_effective_Simpson_Insect_resistance+plot_evenness_Insect_resistance+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff", plot = richness_shannon_pd_Simpson_eveness_Insect_resistance.tiff)
 dev.off()
-
-###############################################################################################
+###########################################################################################################################
 alpha_500_PD_seedweight_1000=alpha_500_PD[!is.na(alpha_500_PD$seedweight_1000),];alpha_500_PD_seedweight_1000
-myco_weight=c("#0B775E","#FB9A99","yellow3","grey35");myco_weight
-###################
+myco_weight=c("#0B775E","#FE7F9D","darkturquoise","#F0E442");myco_weight
+##############################################################################################################################################################################################################################################
 plot_richness_seedweight_1000=ggboxplot(alpha_500_PD_seedweight_1000, x = "seedweight_1000", y = "Richness", fill= "seedweight_1000",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_weight)+
@@ -4247,18 +4453,13 @@ plot_evenness_seedweight_1000=ggboxplot(alpha_500_PD_seedweight_1000, x = "seedw
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_seedweight_1000
 
-----
-#Fig.S10
-----
 tiff("richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff=(plot_richness_seedweight_1000+plot_effective_richness_seedweight_1000+plot_Shannon_seedweight_1000+plot_effective_Shannon_seedweight_1000+plot_PD_seedweight_1000+plot_Simpson_seedweight_1000+plot_effective_Simpson_seedweight_1000+plot_evenness_seedweight_1000+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff", plot = richness_shannon_pd_Simpson_eveness_seedweight_1000.tiff)
 dev.off()
-
-##########################
-##########################
+#########################################################################################################################
 alpha_500_PD_yield=alpha_500_PD[!is.na(alpha_500_PD$yield),];alpha_500_PD_yield
-myco_yield=c("chartreuse4","yellow3","#0B775E","#00AFBB","grey35");myco_yield
+myco_yield=c("chartreuse4","#FE7F9D","darkturquoise","#F0E442", "#009E73");myco_yield
 #########################################################################################################################
 plot_richness_yield=ggboxplot(alpha_500_PD_yield, x = "yield", y = "Richness", fill= "yield",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
@@ -4370,18 +4571,15 @@ plot_evenness_yield=ggboxplot(alpha_500_PD_yield, x = "yield", y = "Evenness", f
   theme(text=element_text(size=19,  family="sans"))+ labs(tag = "H")+
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_yield
 
-----
-#Fig.S9
-----
 tiff("richness_shannon_pd_Simpson_eveness_yield.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_yield.tiff=(plot_richness_yield+plot_effective_richness_yield+plot_Shannon_yield+plot_effective_Shannon_yield+plot_PD_yield+plot_Simpson_yield+plot_effective_Simpson_yield+plot_evenness_yield+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_yield.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_yield.tiff", plot = richness_shannon_pd_Simpson_eveness_yield.tiff)
 dev.off()
-
-###############################################################################################alpha_500_PD_ovaries=alpha_500_PD[!is.na(alpha_500_PD$ovaries),];alpha_500_PD_ovaries
-myco_ovaries=c("#00AFBB","#FB9A99","chartreuse4");myco_ovaries
-##########################
-###########################
+#########################################################################################################################
+#########################################################################################################################
+alpha_500_PD_ovaries=alpha_500_PD[!is.na(alpha_500_PD$ovaries),];alpha_500_PD_ovaries
+myco_ovaries=c("chartreuse4","#FE7F9D","darkturquoise");myco_ovaries
+#########################################################################################################################
 plot_richness_ovaries=ggboxplot(alpha_500_PD_ovaries, x = "ovaries", y = "Richness", fill= "ovaries",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_ovaries)+
@@ -4504,18 +4702,17 @@ plot_evenness_ovaries=ggboxplot(alpha_500_PD_ovaries, x = "ovaries", y = "Evenne
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_ovaries
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
-----
-#Fig.S5
-----
 tiff("richness_shannon_pd_Simpson_eveness_ovaries.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_ovaries.tiff=(plot_richness_ovaries+plot_effective_richness_ovaries+plot_Shannon_ovaries+plot_effective_Shannon_ovaries+plot_PD_ovaries+plot_Simpson_ovaries+plot_effective_Simpson_ovaries+plot_evenness_ovaries+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_ovaries.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_ovaries.tiff", plot = richness_shannon_pd_Simpson_eveness_ovaries.tiff)
 dev.off()
-###############################################################################################
+##########################################################################################################################
+##########################################################################################################################
+##########################################################################################################################
+##########################################################################################################################
 alpha_500_PD_Fruit_hori_diameter=alpha_500_PD[!is.na(alpha_500_PD$Fruit_hori_diameter),];alpha_500_PD_Fruit_hori_diameter
-myco_horiz=c("chartreuse4","#00AFBB","#FB9A99");myco_horiz
-##########################
-###########################
+myco_horiz=c("chartreuse4","#FE7F9D","darkturquoise");myco_horiz
+#########################################################################################################################
 plot_richness_Fruit_hori_diameter=ggboxplot(alpha_500_PD_Fruit_hori_diameter, x = "Fruit_hori_diameter", y = "Richness", fill= "Fruit_hori_diameter",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_horiz)+
@@ -4638,19 +4835,18 @@ plot_evenness_Fruit_hori_diameter=ggboxplot(alpha_500_PD_Fruit_hori_diameter, x 
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_hori_diameter
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
-----
-#Fig.S11
-----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff=(plot_richness_Fruit_hori_diameter+plot_effective_richness_Fruit_hori_diameter+plot_Shannon_Fruit_hori_diameter+plot_effective_Shannon_Fruit_hori_diameter+plot_PD_Fruit_hori_diameter+plot_Simpson_Fruit_hori_diameter+plot_effective_Simpson_Fruit_hori_diameter+plot_evenness_Fruit_hori_diameter+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_hori_diameter.tiff)
 dev.off()
-###############################################################################################
-
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
+#########################################################################################################################
+##########################################################################################################################
 alpha_500_PD_Fruit_long_diameter=alpha_500_PD[!is.na(alpha_500_PD$Fruit_long_diameter),];alpha_500_PD_Fruit_long_diameter
-myco_longdiam=c("chartreuse4","#00AFBB","#FB9A99" );myco_longdiam
-##########################
-
+myco_longdiam=c("chartreuse4","#00AFBB","#FE7F9D" );myco_longdiam
+#########################################################################################################################
 plot_richness_Fruit_long_diameter=ggboxplot(alpha_500_PD_Fruit_long_diameter, x = "Fruit_long_diameter", y = "Richness", fill= "Fruit_long_diameter",  ylab = "Richness", xlab = "")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ theme(legend.position="none") +geom_jitter(width = 0.3,alpha=0.2)+
   geom_jitter(width = 0.3,alpha=0.2)+theme(text = element_text(size = 8.5)) +scale_fill_manual(values=myco_longdiam)+
@@ -4773,13 +4969,125 @@ plot_evenness_Fruit_long_diameter=ggboxplot(alpha_500_PD_Fruit_long_diameter, x 
   theme(plot.margin = margin(0, 0, 0, 0, "pt"));plot_evenness_Fruit_long_diameter
 #ggsave("plot_evenness.TIFF", plot = plot_evenness)
 
-----
-#Fig.S12
-----
 tiff("richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff", units="in", width=13, height=12, res=300)
 richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff=(plot_richness_Fruit_long_diameter+plot_effective_richness_Fruit_long_diameter+plot_Shannon_Fruit_long_diameter+plot_effective_Shannon_Fruit_long_diameter+plot_PD_Fruit_long_diameter+plot_Simpson_Fruit_long_diameter+plot_effective_Simpson_Fruit_long_diameter+plot_evenness_Fruit_long_diameter+ plot_layout(ncol = 2, byrow = FALSE));richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff
 ggsave("richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff", plot = richness_shannon_pd_Simpson_eveness_Fruit_long_diameter.tiff)
 dev.off()
 
 ```
+
+#using the microeco package, we use the file convention there to compute for the assignment of microbiome functions of the seed bacterial community
+##https://chiliubio.github.io/microeco_tutorial/explainable-class.html
+#https://chiliubio.github.io/microeco_tutorial/basic-class.html#microtable-class
+```{r,echo=FALSE,warning=FALSE}
+setwd(/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/")
+load("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/ps2.RData")
+library(microeco)
+library(magrittr)
+library(ggplot2)
+library(aplot)
+library(phyloseq)
+source("phylo-meco.txt")
+library(ggh4x)
+library(ggradar)
+library(ggnested)
+
+mt=phyloseq2meco(ps2);mt
+#phy=meco2phyloseq(mt);phy # microeco to phyloseq
+class(mt$otu_table)
+class(mt$tax_table)
+class(mt$sample_table)
+class(mt$phylo_tree)
+#convert the microeco object
+mt=microtable$new(sample_table = mt$sample_table, otu_table = mt$otu_table, tax_table = mt$tax_table, phylo_tree = mt$phylo_tree);mt
+class(mt)
+mt$sample_table
+#The trans_env & trans_func classes are placed into the section ‘Explainable class’, as environmental factors & microbial functions can be generally applied to explain microbial community structure & assembly.
+
+## Imported metadata file
+#env_data <- read.table("env_data.txt", header=TRUE, sep="\t",row.names="SampleID");env_data
+
+#mt$sample_table <- data.frame(mt$sample_table, env_data[rownames(mt$sample_table), ])
+#mt$sample_table
+#alternatively create another dataframe & append to the microeco object
+#t1 <- trans_env$new(datasetwd(" = mt, add_data = env_data[, 1:12]);t1 
+#t1$data_env
+
+
+```
+#trans_func class
+#Ecological researchers are usually interested in the the funtional profiles of microbial communities, because functional or metabolic data is powerful to explain the structure & dynamics of microbial communities. As metagenomic sequencing is complicated & expensive, using amplicon sequencing data to predict functional profiles is an alternative choice. Several software are often used for this goal, such as PICRUSt (Langille et al. 2013), Tax4Fun (Aßhauer et al. 2015) & FAPROTAX (Stilianos Louca et al. 2016; S. Louca, Parfrey, & Doebeli 2016). These tools are great to be used for the prediction of functional profiles based on the prokaryotic communities from sequencing results. In addition, it is also important to obtain the traits or functions for each taxa, not just the whole profile of communities. FAPROTAX database is a collection of the traits & functions of prokaryotes based on the known research results published in books & literatures. We match the taxonomic information of prokaryotes against this database to predict the traits of prokaryotes on biogeochemical roles. The NJC19 database (Lim et al. 2020) is also available for animal-associated prokaryotic data, such as human gut microbiota. We also implement the FUNGuild (Nguyen et al. 2016) & FungalTraits (Põlme et al. 2020) databases to predict the fungal traits. The idea identifying prokaryotic traits & functional redundancy was initially inspired by our another study (C. Liu et al. 2022).
+```{r,echo=FALSE,warning=FALSE}
+t1 <- trans_func$new(mt)
+t1$sample_table
+t1$cal_spe_func(prok_database = "FAPROTAX")
+t1$cal_spe_func_perc(abundance_weighted = TRUE)
+# it is better to clone a datasetwd("
+tmp_mt <- clone(mt)
+# transpose res_spe_func_perc to be a data.frame like taxonomic abundance
+tmp <- as.data.frame(t(t1$res_spe_func_perc), check.names = FALSE)
+# assign the table back to taxa_abund list for further analysis
+tmp_mt$taxa_abund$func <- tmp
+# select the "func" in taxa_abund list in trans_diff
+t2 <- trans_diff$new(datasetwd(" = tmp_mt, method = "anova", group = "Insect_resistance", taxa_level = "func")
+t2$plot_diff_abund(add_sig = T) + ggplot2::ylab("Relative abundance (%)") 
+
+```
+
+#https://tomsing1.github.io/blog/posts/tidyHeatmap/
+
+```{r}
+
+setwd("wd("/Users/expeditoolimi/Documents/Southampton/Global_tomato_seed_Microbiome/Tomato100_Project/Tomato-seed-microbiome/")
+library(circlize)  # to create continuous color gradients
+library(dplyr)  # wrangling tidy tables
+library(grid)  # to define witdth / height of annotations using grid::unit()
+library(ragg)  # to generate high quality graphics
+library(RColorBrewer)  # to access predefined color palettes
+library(tibble)  # to convert data.frames to tibbles
+library(tidyHeatmap) # the main act: plotting & annotating heatmaps
+library(readr)
+library(edgeR)
+data <- read_csv("Result_DAtest_insect.csv");data
+
+#remove duplictated items
+library(dplyr)
+data <- data %>% distinct();data
+
+### setwd(" thresholds
+padj.cutoff <- 0.05
+lfc.cutoff <- 0.58
+#The lfc.cutoff is setwd(" to 0.58; remember that we are working with log2 fold changes so this translates to an actual fold #change of 1.5 which is pretty reasonable. Let’s create vector that helps us identify the genes that meet our criteria:
+
+threshold <- data$pval.adj < padj.cutoff & abs(data$logFC) > lfc.cutoff
+
+# Volcano plot
+ggplot(data) +
+  geom_point(aes(x=logFC, y=-log10(data$pval.adj), colour=threshold)) +
+  ggtitle("Mov10 overexpression") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  theme(legend.position = "none",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25)))  
+```
+
+
+```{r}
+resOE_df_ordered <- data[order(data$pval), ];resOE_df_ordered
+resOE_df_ordered$genelabels <- rownames(resOE_df_ordered) %in% rownames(resOE_df_ordered[1:1000,])
+#View(resOE_df_ordered)
+
+ggplot(resOE_df_ordered) +
+  geom_point(aes(x = logFC, y = -log10(pval.adj), colour = threshold)) +
+  geom_text_repel(aes(x = logFC, y = -log10(pval.adj), label = ifelse(genelabels == T, rownames(resOE_df_ordered),""))) +
+  ggtitle("Mov10 overexpression") +
+  xlab("log2 fold change") + 
+  ylab("-log10 adjusted p-value") +
+  theme(legend.position = "none",
+        plot.title = element_text(size = rel(1.5), hjust = 0.5),
+        axis.title = element_text(size = rel(1.25))) 
+
+```
+
 

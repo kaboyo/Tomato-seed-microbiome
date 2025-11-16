@@ -1,6 +1,5 @@
 ---
-##Fig. 4 & S19
-title: "Exploring plasticity of the tomato seed microbiome"
+title: "Final figure"
 author: "Carolina Lobato"
 date: "2025-01-05"
 output: html_document
@@ -415,3 +414,78 @@ result %>% ggplot( aes(x = logFC, y = Feature)) +
   theme_classic() +
   theme(axis.text.y = element_text(size = 6, face = "italic"))
 ```
+
+# Colors
+```{r}
+# Phyla for Kingdom = Bacteria (15421 ASVs)
+1Moss Green - "#4A7C57" # Abditibacteriota, 27
+2Forest Green - "#2C6E3F" # Acetothermia, 2
+3Fern Green - "#607B3B" # Acidobacteriota, 447
+4Olive Green - "#A2A400" # Actinobacteriota, 1722
+5Pine Green - "#1E5B3D" # Aquificota, 1
+6Sage Green - "#A4B68C"# Armatimonadota, 45
+7Mint Green - "#A8D8B9" # Bacteroidota, 1838
+8Lime Green - "#88B04B" # Bdellovibrionota, 216
+9Seaweed Green - "#3B6E5C" # Campilobacterota, 41
+10Cactus Green - "#4E9F6D" # Chloroflexi, 303
+11Teal - "#4C6A5F" # Cloacimonadota, 2
+12Earth Brown - "#7A4B37" # Dadabacteria, 3
+13Chocolate Brown - "#4E3629" # Deferribacterota, 2
+14Sienna Brown - "#8E5C42" # Deinococcota, 113
+15Clay Brown - "#9C6B47" # Dependentiae, 12
+16Chestnut Brown - "#7D3A2F" # Desulfobacterota, 51
+17Desert Sand - "#F1E0C6" # Elusimicrobiota, 16
+18Golden Brown - "#BC8A5E" # Entotheonellaeota, 4
+19Terracotta - "#E2735D" # Fibrobacterota, 1
+20Brick Red - "#9C2A2C" # Firmicutes, 4310
+21Poppy Red - "#E43F44" # Fusobacteriota, 47
+22Crimson Red - "#9B1B30" # Gemmatimonadota, 100
+23Rust Orange - "#C65D4F" # Halanaerobiaeota, 14
+24Sunset Yellow - "#F9A71B" # Latescibacterota, 10
+25Buttercup Yellow - "#F7E34B" # Methylomirabilota, 10
+26Daffodil Yellow - "#FFDD47" # Myxococcota, 235
+27Goldenrod Yellow - "#E4B02B" # Nitrospirota, 37
+28Sky Blue - "#72AEE6" # Patescibacteria, 193
+29Cobalt Blue - "#3E5C9E" # Planctomycetota, 349
+30Seafoam Blue - "#A6C9D1" # Proteobacteria, 4919
+31Ocean Blue - "#2A6F8F" # Spirochaetota, 14
+32Cloud White - "#F7F6F2" # Sumerlaeota, 2
+33Ivory - "#F2E8C7" # unidentified_Bacteria, 52 
+34Lavender - "#9B8BB3" # Synergistota, 6
+35Wildflower Purple - "#9F74C5" # Thermotogota, 2
+36Rose Pink - "#F1B3C2" # Sva0485, 1
+37Mauve - "#9E7F89" # Verrucomicrobiota, 273
+38Coral Pink - "#FF6F61" # Zixibacteria, 2
+
+# Class for ab = 0.005 (488 ASVS)
+1Moss Green - "#4A7C57" # Acidobacteriae, 2
+2Forest Green - "#2C6E3F" # Actinobacteria, 44
+3Fern Green - "#607B3B" # Alphaproteobacteria, 47
+4Olive Green - "#A4B68C" # Bacilli, 135
+5Pine Green - "#1E5B3D" # Bacteroidia, 48
+6Sage Green - "#A2A400"# Bdellovibrionia, 1
+7Mint Green - "#A8D8B9" # Blastocatellia, 1
+8Lime Green - "#88B04B" # Campylobacteria, 3
+9Seaweed Green - "#3B6E5C" # Chlamydiae, 2
+10Cactus Green - "#4E9F6D" # Chloroflexia, 1
+11Teal - "#4C6A5F" # Clostridia, 25
+12Chocolate Brown - "#2A6F8F" # Desulfuromonadia, 1
+13Clay Brown - "#72AEE6" # Gammaproteobacteria, 159
+14Chestnut Brown - "#A6C9D1" # Holophagae, 1
+15Desert Sand - "#3E5C9E" # Latescibacterota, 1
+16Golden Brown - "#BC8A5E" # Negativicutes, 2
+17Sky Blue - "#9C6B47" # Parcubacteria, 3
+18Cobalt Blue - "#F1E0C6" # Phycisphaerae, 2
+19Seafoam Blue - "#7D3A2F" # Polyangia, 2
+20Ocean Blue - "#4E3629" # Saccharimonadia, 2
+21Cloud White - "#9E7F89" # Syntrophia, 1
+22Ivory - "#F1B3C2" # Thermoleophilia, 2
+23Rose Pink - "#F2E8C7" # uid_Planctomycetota, 1
+24Mauve - "#F7F6F2" # Verrucomicrobiae, 3
+
+# Core
+1"#D8B7DD" (Pastel Lavender) # C30
+2"#B79FD1" (Misty Lavender) # C70
+3"#8A7DAF" (Dusty Lavender) # C90
+```
+
